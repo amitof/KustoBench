@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""KustoBench - CLI entry point for running benchmarks against Azure Data Explorer.
+
+Usage::
+
+    python run_benchmark.py --config config.yaml
+    python run_benchmark.py --config config.yaml --format json --output results.json
+"""
+
+import argparse
+import sys
+
+from benchmark.config import load_config
+from benchmark.kusto_client import KustoBenchClient
+from benchmark.reporter import report
+from benchmark.runner import run_benchmark
+
+
+def parse_args(argv=None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="run_benchmark",
+        description="Run a benchmark suite against an Azure Data Explorer (Kusto) cluster.",
+    )
+    parser.add_argument(
+        "--config",
+        required=True,
+        metavar="FILE",
+        help="Path to the YAML configuration file.",
+    )
+    parser.add_argument(
+        "--format",
+        default=None,
+        choices=["table", "csv", "json"],
+        help="Output format (overrides config file setting).",
+    )
+    parser.add_argument(
+        "--output",
+        default=None,
+        metavar="FILE",
+        help="Write results to FILE instead of stdout.",
+    )
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Number of measured iterations per query (overrides config).",
+    )
+    parser.add_argument(
+        "--warmup",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Number of warm-up iterations per query (overrides config).",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None) -> int:
+    args = parse_args(argv)
+
+    try:
+        config = load_config(args.config)
+    except FileNotFoundError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:  # noqa: BLE001
+        print(f"ERROR loading configuration: {exc}", file=sys.stderr)
+        return 1
+
+    # Apply CLI overrides
+    if args.iterations is not None:
+        config["benchmark"]["iterations"] = args.iterations
+    if args.warmup is not None:
+        config["benchmark"]["warmup_iterations"] = args.warmup
+    if args.format is not None:
+        config["output"]["format"] = args.format
+    if args.output is not None:
+        config["output"]["file"] = args.output
+
+    if not config.get("queries"):
+        print("WARNING: No queries defined in the configuration.", file=sys.stderr)
+
+    try:
+        with KustoBenchClient(config) as client:
+            result = run_benchmark(client, config)
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:  # noqa: BLE001
+        print(f"ERROR during benchmark: {exc}", file=sys.stderr)
+        return 1
+
+    report(
+        result,
+        fmt=config["output"].get("format", "table"),
+        output_file=config["output"].get("file"),
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

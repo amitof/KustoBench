@@ -1,0 +1,49 @@
+# KustoBench configuration file
+# Copy this file to config.yaml and fill in your cluster details.
+
+# ── Connection ──────────────────────────────────────────────────────────────
+cluster_url: "https://<your-cluster>.kusto.windows.net"
+database: "<your-database>"
+
+# ── Authentication ──────────────────────────────────────────────────────────
+# Supported methods:
+#   aad_device_code   - interactive browser / device-code login (default)
+#   aad_application   - service-principal (requires client_id, client_secret, tenant_id)
+#   aad_user_password - username + password
+#   token             - supply a pre-acquired bearer token
+auth:
+  method: aad_device_code
+  # method: aad_application
+  # client_id: "<app-id>"
+  # client_secret: "<secret>"   # prefer env var KUSTO_CLIENT_SECRET
+  # tenant_id: "<tenant-id>"
+
+# ── Benchmark settings ───────────────────────────────────────────────────────
+benchmark:
+  iterations: 3          # number of measured iterations per query
+  warmup_iterations: 1   # iterations run before measurement (results discarded)
+  timeout_seconds: 300   # per-query network timeout
+
+# ── Output ───────────────────────────────────────────────────────────────────
+output:
+  format: table   # table | csv | json
+  file: null      # write to this file instead of stdout (null = stdout)
+
+# ── Queries ──────────────────────────────────────────────────────────────────
+queries:
+  - name: "simple-count"
+    query: |
+      StormEvents
+      | count
+
+  - name: "top-states-by-events"
+    query: |
+      StormEvents
+      | summarize EventCount = count() by State
+      | top 10 by EventCount desc
+
+  - name: "events-over-time"
+    query: |
+      StormEvents
+      | summarize Events = count() by bin(StartTime, 1d)
+      | order by StartTime asc
