@@ -4,8 +4,7 @@ import pytest
 from unittest.mock import MagicMock, call
 
 from benchmark.setup import (run_setup, _drop_table, _create_table,
-                             _build_externaldata_schema, _ingest_files,
-                             _resolve_parallelism)
+                             _ingest_files, _resolve_parallelism)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -119,13 +118,11 @@ def test_ingest_files():
         {"url": "https://example.com/hits_0.parquet"},
         {"url": "https://example.com/hits_1.parquet"},
     ]
-    _ingest_files(client, "hits", "parquet", files,
-                  externaldata_schema="Id:int, Title:string")
+    _ingest_files(client, "hits", "parquet", files)
     assert client.execute_control.call_count == 2
     for c in client.execute_control.call_args_list:
         cmd = c[0][0]
-        assert ".set-or-append" in cmd
-        assert "externaldata(Id:int, Title:string)" in cmd
+        assert ".ingest into table" in cmd
         assert "format='parquet'" in cmd
 
 
@@ -178,27 +175,3 @@ def test_resolve_parallelism_min_one():
     client = _mock_client(total_cores=1)
     # 0.75 * 1 = 0.75 → int = 0 → clamped to 1
     assert _resolve_parallelism(client, {"ingestion_parallelism_factor": 0.75}) == 1
-
-
-# ── _build_externaldata_schema ───────────────────────────────────────────────
-
-
-def test_build_externaldata_schema():
-    schema = "// Comment\n.create table hits (\n    Id: int,\n    Title: string\n)"
-    result = _build_externaldata_schema(schema)
-    assert result == "Id:int, Title:string"
-
-
-def test_build_externaldata_schema_no_columns():
-    with pytest.raises(ValueError, match="Could not extract columns"):
-        _build_externaldata_schema("// only comments")
-
-
-def test_ingest_files_with_externaldata_schema():
-    client = _mock_client()
-    files = [{"url": "https://example.com/hits_0.parquet"}]
-    _ingest_files(client, "hits", "parquet", files,
-                  externaldata_schema="Id:int, Title:string")
-    cmd = client.execute_control.call_args[0][0]
-    assert "externaldata(Id:int, Title:string)" in cmd
-    assert "@'https://example.com/hits_0.parquet'" in cmd

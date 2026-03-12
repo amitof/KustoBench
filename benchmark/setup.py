@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING, List
@@ -45,7 +44,7 @@ def run_setup(client: KustoBenchClient, config: dict) -> None:
     if not table_name:
         raise ValueError("Dataset data.table_name is not set.")
 
-    files: List[dict] = data.get("files", [])
+    files: List[dict] = data.get("files", [])[:1]  # TODO: temporarily ingest only the first file
     parallelism = _resolve_parallelism(client, data)
 
     # 1. Drop the table if it already exists
@@ -54,13 +53,9 @@ def run_setup(client: KustoBenchClient, config: dict) -> None:
     # 2. Create the table from the schema
     _create_table(client, schema)
 
-    # 3. Build externaldata column list for type-coerced ingestion
+    # 3. Ingest each data file
     fmt = data.get("format", "parquet")
-    ext_schema = _build_externaldata_schema(schema)
-
-    # 4. Ingest each data file
-    _ingest_files(client, table_name, fmt, files,
-                  parallelism=parallelism, externaldata_schema=ext_schema)
+    _ingest_files(client, table_name, fmt, files, parallelism=parallelism)
 
 
 def _drop_table(client: KustoBenchClient, table_name: str) -> None:
@@ -79,25 +74,6 @@ def _create_table(client: KustoBenchClient, schema: str) -> None:
         raise ValueError("Schema file contains no commands after stripping comments.")
     print(f"  Creating table…", file=sys.stderr)
     client.execute_control(command)
-
-
-def _build_externaldata_schema(schema: str) -> str:
-    """Extract column definitions from the .create table schema and return
-    an ``externaldata()`` column list like ``Col1:type1, Col2:type2, …``.
-
-    This is used to build ``.set-or-append`` commands that read parquet
-    files via ``externaldata()``.  The inline schema forces KQL to coerce
-    Parquet BYTE_ARRAY to ``string``, INT64 timestamps to ``datetime``, etc.
-    """
-    clean_lines = [ln for ln in schema.strip().splitlines()
-                   if not ln.lstrip().startswith("//")]
-    clean_schema = "\n".join(clean_lines)
-    pairs = re.findall(r'^\s+(\w+)\s*:\s*(\w+)', clean_schema, re.MULTILINE)
-    if not pairs:
-        raise ValueError(
-            "Could not extract columns from schema for externaldata()."
-        )
-    return ", ".join(f"{name}:{typ}" for name, typ in pairs)
 
 
 def _resolve_parallelism(client: KustoBenchClient, data: dict) -> int:
@@ -130,7 +106,6 @@ def _ingest_files(
     files: List[dict],
     *,
     parallelism: int = 1,
-    externaldata_schema: str = "",
 ) -> None:
     """Ingest data files into the table."""
     valid_files = [f for f in files if f.get("url")]
@@ -146,12 +121,9 @@ def _ingest_files(
     def _ingest_one(idx_and_entry):
         idx, file_entry = idx_and_entry
         url = file_entry["url"]
-        # Use .set-or-append with externaldata() so KQL coerces types
-        # (BYTE_ARRAY→string, INT64→datetime, etc.)
         command = (
-            f".set-or-append ['{table_name}'] <| "
-            f"externaldata({externaldata_schema}) "
-            f"[@'{url}'] with (format='{fmt}')"
+            f".ingest into table ['{table_name}'] "
+            f"('{url}') with (format='{fmt}')"
         )
         print(
             f"  Ingesting file {idx}/{total}: {url.rsplit('/', 1)[-1]}",
