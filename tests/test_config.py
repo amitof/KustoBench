@@ -4,7 +4,7 @@ import os
 import pytest
 import yaml
 
-from benchmark.config import load_config, _deep_merge, DEFAULT_CONFIG
+from benchmark.config import load_config, load_dataset, apply_dataset, _deep_merge, DEFAULT_CONFIG, DATASETS_DIR
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -109,3 +109,37 @@ def test_load_config_queries(tmp_path):
     config = load_config(path)
     assert len(config["queries"]) == 2
     assert config["queries"][0]["name"] == "q1"
+
+
+# ── load_dataset ──────────────────────────────────────────────────────────────
+
+
+def test_load_dataset_clickbench():
+    ds = load_dataset("clickbench")
+    assert ds["name"] == "clickbench"
+    assert "hits" in ds["schema"]
+    assert len(ds["queries"]) == 43
+    assert ds["queries"][0]["name"] == "q00"
+    assert "count" in ds["queries"][0]["query"]
+
+
+def test_load_dataset_not_found():
+    with pytest.raises(FileNotFoundError):
+        load_dataset("nonexistent_dataset")
+
+
+def test_load_dataset_has_data_section():
+    ds = load_dataset("clickbench")
+    assert ds["data"]["table_name"] == "hits"
+    assert ds["data"]["format"] == "parquet"
+    assert len(ds["data"]["files"]) == 100
+
+
+def test_apply_dataset_sets_queries(tmp_path):
+    data = {"cluster_url": "https://x.kusto.windows.net", "database": "db"}
+    path = write_yaml(tmp_path, data)
+    config = load_config(path)
+    apply_dataset(config, "clickbench")
+    assert len(config["queries"]) == 43
+    assert "dataset" in config
+    assert config["dataset"]["name"] == "clickbench"

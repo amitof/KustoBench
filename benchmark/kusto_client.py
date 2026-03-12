@@ -72,6 +72,7 @@ class KustoBenchClient:
         kcsb = build_connection_string(config)
         self._client = KustoClient(kcsb)
         self._database = config.get("database", "")
+        self._cluster_url = config.get("cluster_url", "")
         if not self._database:
             raise ValueError("database must be set in the configuration.")
 
@@ -94,6 +95,67 @@ class KustoBenchClient:
         row_count = len(primary) if primary is not None else 0
         column_count = len(primary.columns) if primary is not None else 0
         return {"row_count": row_count, "column_count": column_count}
+
+    def execute_control(self, command: str) -> dict:
+        """Execute a KQL management (control) command.
+
+        Control commands start with ``.`` (e.g. ``.create table``,
+        ``.drop table``, ``.ingest``).
+
+        Args:
+            command: The management command string.
+
+        Returns:
+            A dict with keys:
+                - ``row_count``: number of result rows.
+                - ``column_count``: number of columns in the primary result.
+
+        Raises:
+            KustoServiceError: On server-side errors.
+        """
+        response = self._client.execute_mgmt(self._database, command)
+        primary = response.primary_results[0] if response.primary_results else None
+        row_count = len(primary) if primary is not None else 0
+        column_count = len(primary.columns) if primary is not None else 0
+        return {"row_count": row_count, "column_count": column_count}
+
+    def get_cluster_info(self) -> dict:
+        """Query the cluster for hardware / topology information.
+
+        Returns:
+            A dict with keys ``cluster_url``, ``nodes``,
+            ``cores_per_node``, ``total_cores``, ``memory_gb_per_node``.
+            Values may be ``None`` if the information is unavailable.
+        """
+        info: dict = {
+            "cluster_url": self._cluster_url,
+            "nodes": None,
+            "cores_per_node": None,
+            "total_cores": None,
+            "memory_gb_per_node": None,
+        }
+
+        try:
+            resp = self._client.execute_mgmt(self._database, ".show diagnostics")
+            primary = resp.primary_results[0] if resp.primary_results else None
+            if primary and len(primary) > 0:
+                row = primary[0]
+                col_names = [c.column_name for c in primary.columns]
+                if "MachineTotal" in col_names:
+                    info["nodes"] = int(row["MachineTotal"])
+                if "CoresTotal" in col_names and info["nodes"]:
+                    total = int(row["CoresTotal"])
+                    info["total_cores"] = total
+                    info["cores_per_node"] = total // info["nodes"] if info["nodes"] else total
+                if "MemoryTotal" in col_names and info["nodes"]:
+                    # MemoryTotal is reported in bytes
+                    mem_bytes = int(row["MemoryTotal"])
+                    total_gb = mem_bytes / (1024 ** 3)
+                    info["memory_gb_per_node"] = round(total_gb / info["nodes"], 1)
+        except Exception:  # noqa: BLE001
+            pass  # best-effort; cluster info is informational only
+
+        return info
 
     def close(self) -> None:
         """Close the underlying Kusto client."""

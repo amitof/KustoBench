@@ -24,16 +24,25 @@ def test_parse_args_all_options():
         "--output", "out.json",
         "--iterations", "5",
         "--warmup", "2",
+        "--dataset", "clickbench",
+        "--setup",
     ])
     assert args.format == "json"
     assert args.output == "out.json"
     assert args.iterations == 5
     assert args.warmup == 2
+    assert args.dataset == "clickbench"
+    assert args.setup is True
 
 
-def test_parse_args_missing_config():
-    with pytest.raises(SystemExit):
-        parse_args([])
+def test_parse_args_setup_default_false():
+    args = parse_args(["--config", "c.yaml"])
+    assert args.setup is False
+
+
+def test_parse_args_default_config():
+    args = parse_args([])
+    assert args.config == "config.yaml"
 
 
 # ── main ──────────────────────────────────────────────────────────────────────

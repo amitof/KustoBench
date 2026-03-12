@@ -1,0 +1,12 @@
+// Q30: Page views per minute for counter 62 in July 2013, with offset.
+hits
+| where CounterID == 62
+    and EventDate >= datetime(2013-07-01)
+    and EventDate <= datetime(2013-07-31)
+    and IsRefresh == 0
+    and DontCountHits == 0
+| summarize PageViews = count() by M = bin(EventTime, 1m)
+| order by M asc
+| serialize rn = row_number()
+| where rn > 1000 and rn <= 1010
+| project-away rn

@@ -1,0 +1,4 @@
+// Q01: Count rows with a non-zero advertising engine.
+hits
+| where AdvEngineID != 0
+| count

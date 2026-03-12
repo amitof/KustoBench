@@ -1,0 +1,4 @@
+// Q17: Arbitrary 10 user + search phrase groups (no ordering).
+hits
+| summarize c = count() by UserID, SearchPhrase
+| take 10

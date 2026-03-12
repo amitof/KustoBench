@@ -1,4 +1,0 @@
-// Top 10 states by number of storm events.
-StormEvents
-| summarize EventCount = count() by State
-| top 10 by EventCount desc

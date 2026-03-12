@@ -1,3 +1,0 @@
-// Simple row count on the StormEvents sample table.
-StormEvents
-| count

@@ -1,0 +1,3 @@
+// Q05: Distinct count of SearchPhrase.
+hits
+| summarize dcount(SearchPhrase)

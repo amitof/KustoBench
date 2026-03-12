@@ -1,0 +1,4 @@
+// Q20: Count of URLs containing "google".
+hits
+| where URL contains "google"
+| count

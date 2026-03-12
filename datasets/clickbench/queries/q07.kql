@@ -1,0 +1,5 @@
+// Q07: Count by advertising engine (non-zero only), ordered descending.
+hits
+| where AdvEngineID != 0
+| summarize cnt = count() by AdvEngineID
+| order by cnt desc

@@ -1,0 +1,3 @@
+// Q03: Average of a high-cardinality long column.
+hits
+| summarize avg(UserID)

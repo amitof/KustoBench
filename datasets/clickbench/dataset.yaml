@@ -1,0 +1,129 @@
+# ClickBench dataset configuration for KustoBench
+#
+# Based on the ClickBench analytical benchmark (https://benchmark.clickhouse.com/).
+# The dataset contains ~100 million rows of anonymised web-analytics page-view
+# data ("hits" table from Yandex.Metrica) and 43 standardised queries covering
+# scans, aggregations, filtering, sorting, and distinct-counting patterns.
+
+name: clickbench
+description: >
+  ClickBench is an open analytical-database benchmark. It uses a single wide
+  table (105 columns) of web-analytics hit data and 43 queries that exercise
+  full-table scans, GROUP BY aggregations, filtering, sorting, DISTINCT
+  counting, and string matching.
+
+# ── Data files ───────────────────────────────────────────────────────────────
+# The data is distributed as 100 Parquet part files (0–99).
+data:
+  format: parquet
+  table_name: hits
+  ingestion_parallelism_factor: 0.75
+  files:
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_0.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_1.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_2.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_3.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_4.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_5.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_6.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_7.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_8.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_9.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_10.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_11.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_12.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_13.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_14.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_15.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_16.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_17.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_18.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_19.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_20.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_21.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_22.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_23.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_24.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_25.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_26.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_27.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_28.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_29.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_30.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_31.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_32.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_33.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_34.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_35.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_36.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_37.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_38.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_39.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_40.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_41.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_42.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_43.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_44.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_45.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_46.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_47.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_48.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_49.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_50.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_51.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_52.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_53.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_54.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_55.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_56.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_57.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_58.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_59.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_60.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_61.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_62.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_63.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_64.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_65.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_66.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_67.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_68.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_69.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_70.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_71.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_72.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_73.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_74.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_75.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_76.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_77.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_78.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_79.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_80.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_81.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_82.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_83.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_84.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_85.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_86.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_87.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_88.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_89.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_90.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_91.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_92.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_93.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_94.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_95.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_96.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_97.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_98.parquet"
+    - url: "https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_99.parquet"
+
+# ── Schema ───────────────────────────────────────────────────────────────────
+# Relative path to the KQL .create table command.
+schema_file: schema.kql
+
+# ── Queries ──────────────────────────────────────────────────────────────────
+# Relative path to the directory containing one .kql file per benchmark query.
+queries_dir: queries

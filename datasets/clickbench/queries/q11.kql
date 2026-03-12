@@ -1,0 +1,5 @@
+// Q11: Top 10 mobile phone + model combinations by distinct user count.
+hits
+| where MobilePhoneModel != ""
+| summarize u = dcount(UserID) by MobilePhone, MobilePhoneModel
+| top 10 by u desc

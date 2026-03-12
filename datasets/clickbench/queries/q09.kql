@@ -1,0 +1,4 @@
+// Q09: Top 5 regions by count, with multiple aggregations.
+hits
+| summarize sum(AdvEngineID), c = count(), avg(ResolutionWidth), dcount(UserID) by RegionID
+| top 5 by c desc

@@ -1,0 +1,5 @@
+// Q40: Top 10 search phrases on google URLs (repeated).
+hits
+| where URL contains "google" and SearchPhrase != ""
+| summarize min(URL), c = count() by SearchPhrase
+| top 10 by c desc

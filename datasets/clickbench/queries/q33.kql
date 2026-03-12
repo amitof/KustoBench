@@ -1,0 +1,11 @@
+// Q33: Bottom 25 search phrases for counter 62 in July 2013, ascending.
+hits
+| where CounterID == 62
+    and EventDate >= datetime(2013-07-01)
+    and EventDate <= datetime(2013-07-31)
+    and IsRefresh == 0
+    and DontCountHits == 0
+    and SearchPhrase != ""
+| summarize c = count() by SearchPhrase
+| order by c asc
+| take 25

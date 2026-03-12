@@ -1,0 +1,3 @@
+// Q29: Sum of resolution dimensions.
+hits
+| summarize sum(ResolutionWidth), sum(ResolutionHeight)

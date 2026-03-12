@@ -1,4 +1,0 @@
-// Storm events aggregated by day.
-StormEvents
-| summarize Events = count() by bin(StartTime, 1d)
-| order by StartTime asc

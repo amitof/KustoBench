@@ -1,0 +1,5 @@
+// Q14: Top 10 search engine + phrase combinations by count.
+hits
+| where SearchPhrase != ""
+| summarize c = count() by SearchEngineID, SearchPhrase
+| top 10 by c desc

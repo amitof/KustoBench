@@ -1,0 +1,7 @@
+// Q34: Top 25 users by hit count for counter 62 in July 2013.
+hits
+| where CounterID == 62
+    and EventDate >= datetime(2013-07-01)
+    and EventDate <= datetime(2013-07-31)
+| summarize c = count() by UserID
+| top 25 by c desc

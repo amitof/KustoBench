@@ -1,0 +1,4 @@
+// Q16: Top 10 user + search phrase combinations by count.
+hits
+| summarize c = count() by UserID, SearchPhrase
+| top 10 by c desc
