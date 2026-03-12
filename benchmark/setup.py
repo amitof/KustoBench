@@ -44,7 +44,7 @@ def run_setup(client: KustoBenchClient, config: dict) -> None:
     if not table_name:
         raise ValueError("Dataset data.table_name is not set.")
 
-    files: List[dict] = data.get("files", [])[:1]  # TODO: temporarily ingest only the first file
+    files: List[dict] = data.get("files", [])
     parallelism = _resolve_parallelism(client, data)
 
     # 1. Drop the table if it already exists
