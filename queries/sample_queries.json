@@ -1,0 +1,35 @@
+{
+  "cluster_uri": "https://<your-cluster>.<region>.kusto.windows.net",
+  "auth_method": "default",
+  "output_format": "table",
+  "queries": [
+    {
+      "name": "row_count",
+      "query": "StormEvents | count",
+      "database": "Samples",
+      "iterations": 5,
+      "warmup_iterations": 1
+    },
+    {
+      "name": "top_states",
+      "query": "StormEvents | summarize count() by State | top 10 by count_",
+      "database": "Samples",
+      "iterations": 5,
+      "warmup_iterations": 1
+    },
+    {
+      "name": "event_types",
+      "query": "StormEvents | summarize count() by EventType | order by count_ desc | take 20",
+      "database": "Samples",
+      "iterations": 5,
+      "warmup_iterations": 1
+    },
+    {
+      "name": "injuries_by_state",
+      "query": "StormEvents | summarize TotalInjuries=sum(InjuriesDirect) by State | top 10 by TotalInjuries",
+      "database": "Samples",
+      "iterations": 3,
+      "warmup_iterations": 1
+    }
+  ]
+}

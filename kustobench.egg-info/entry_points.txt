@@ -1,0 +1,2 @@
+[console_scripts]
+kustobench = kustobench.__main__:main
