@@ -61,8 +61,11 @@ def build_connection_string(config: dict) -> KustoConnectionStringBuilder:
             cluster_url, lambda: token
         )
 
-    # Default: interactive device code
-    return KustoConnectionStringBuilder.with_aad_device_authentication(cluster_url)
+    if method == "aad_device_code":
+        return KustoConnectionStringBuilder.with_aad_device_authentication(cluster_url)
+
+    # Default: interactive browser login
+    return KustoConnectionStringBuilder.with_interactive_login(cluster_url)
 
 
 class KustoBenchClient:
@@ -126,7 +129,17 @@ class KustoBenchClient:
             A dict with keys ``cluster_url``, ``nodes``,
             ``cores_per_node``, ``total_cores``, ``memory_gb_per_node``.
             Values may be ``None`` if the information is unavailable.
+
+        Raises:
+            RuntimeError: If the cluster does not respond to ``.show cluster``.
         """
+        try:
+            resp = self._client.execute_mgmt(self._database, ".show cluster")
+        except Exception as exc:
+            raise RuntimeError(
+                f"Cluster is unresponsive – .show cluster failed: {exc}"
+            ) from exc
+
         info: dict = {
             "cluster_url": self._cluster_url,
             "nodes": None,
@@ -135,25 +148,17 @@ class KustoBenchClient:
             "memory_gb_per_node": None,
         }
 
-        try:
-            resp = self._client.execute_mgmt(self._database, ".show diagnostics")
-            primary = resp.primary_results[0] if resp.primary_results else None
-            if primary and len(primary) > 0:
-                row = primary[0]
-                col_names = [c.column_name for c in primary.columns]
-                if "MachineTotal" in col_names:
-                    info["nodes"] = int(row["MachineTotal"])
-                if "CoresTotal" in col_names and info["nodes"]:
-                    total = int(row["CoresTotal"])
-                    info["total_cores"] = total
-                    info["cores_per_node"] = total // info["nodes"] if info["nodes"] else total
-                if "MemoryTotal" in col_names and info["nodes"]:
-                    # MemoryTotal is reported in bytes
-                    mem_bytes = int(row["MemoryTotal"])
-                    total_gb = mem_bytes / (1024 ** 3)
-                    info["memory_gb_per_node"] = round(total_gb / info["nodes"], 1)
-        except Exception:  # noqa: BLE001
-            pass  # best-effort; cluster info is informational only
+        primary = resp.primary_results[0] if resp.primary_results else None
+        if primary and len(primary) > 0:
+            nodes = len(primary)
+            info["nodes"] = nodes
+            cores_per_node = int(primary[0]["ProcessorCount"])
+            info["cores_per_node"] = cores_per_node
+            info["total_cores"] = sum(
+                int(row["ProcessorCount"]) for row in primary
+            )
+            mem_bytes = int(primary[0]["MachineTotalMemory"])
+            info["memory_gb_per_node"] = round(mem_bytes / (1024 ** 3), 1)
 
         return info
 
