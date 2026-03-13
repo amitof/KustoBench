@@ -23,18 +23,19 @@ def _query_summary_rows(result: BenchmarkResult) -> list:
     for qr in result.query_results:
         success = len(qr.successful_iterations)
         failure = len(qr.failed_iterations)
-        rows.append(
-            [
-                qr.name,
-                success,
-                failure,
-                _fmt(qr.min_seconds),
-                _fmt(qr.mean_seconds),
-                _fmt(qr.median_seconds),
-                _fmt(qr.max_seconds),
-                _fmt(qr.stdev_seconds),
-            ]
-        )
+        row = [
+            qr.name,
+            success,
+            failure,
+            _fmt(qr.min_seconds),
+            _fmt(qr.mean_seconds),
+            _fmt(qr.median_seconds),
+            _fmt(qr.max_seconds),
+            _fmt(qr.stdev_seconds),
+        ]
+        if failure > 0:
+            row = [f"\033[91m{cell}\033[0m" for cell in row]
+        rows.append(row)
     return rows
 
 

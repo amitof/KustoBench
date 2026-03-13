@@ -1,5 +1,5 @@
 {
   "description": "Distinct count of SearchPhrase",
-  "kql": "hits\n| summarize dcount(SearchPhrase)",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| summarize dcount(SearchPhrase)",
   "sql": "SELECT COUNT(DISTINCT SearchPhrase) FROM hits"
 }

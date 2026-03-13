@@ -1,5 +1,5 @@
 {
   "description": "Count by AdvEngineID, ordered desc",
-  "kql": "hits\n| where AdvEngineID != 0\n| summarize cnt = count() by AdvEngineID\n| order by cnt desc",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where AdvEngineID != 0\n| summarize cnt = count() by AdvEngineID\n| order by cnt desc",
   "sql": "SELECT AdvEngineID, COUNT(*) FROM hits WHERE AdvEngineID <> 0 GROUP BY AdvEngineID ORDER BY COUNT(*) DESC"
 }

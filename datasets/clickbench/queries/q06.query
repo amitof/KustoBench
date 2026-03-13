@@ -1,5 +1,5 @@
 {
   "description": "Min and max of EventDate",
-  "kql": "hits\n| summarize min(EventDate), max(EventDate)",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| summarize min(EventDate), max(EventDate)",
   "sql": "SELECT MIN(EventDate), MAX(EventDate) FROM hits"
 }

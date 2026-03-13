@@ -1,5 +1,5 @@
 {
   "description": "Top 10 search phrases on google URLs (repeated)",
-  "kql": "hits\n| where URL contains \"google\" and SearchPhrase != \"\"\n| summarize min(URL), c = count() by SearchPhrase\n| top 10 by c desc",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where URL contains \"google\" and SearchPhrase != \"\"\n| summarize min(URL), c = count() by SearchPhrase\n| top 10 by c desc",
   "sql": "SELECT URLHash, EventDate, COUNT(*) AS PageViews FROM hits WHERE CounterID = 62 AND EventDate >= '2013-07-01' AND EventDate <= '2013-07-31' AND IsRefresh = 0 AND TraficSourceID IN (-1, 6) AND RefererHash = 3594120000172545465 GROUP BY URLHash, EventDate ORDER BY PageViews DESC LIMIT 10 OFFSET 100"
 }

@@ -1,5 +1,5 @@
 {
   "description": "Top 10 non-empty search phrases by count",
-  "kql": "hits\n| where SearchPhrase != \"\"\n| summarize c = count() by SearchPhrase\n| top 10 by c desc",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where SearchPhrase != \"\"\n| summarize c = count() by SearchPhrase\n| top 10 by c desc",
   "sql": "SELECT SearchPhrase, COUNT(*) AS c FROM hits WHERE SearchPhrase <> '' GROUP BY SearchPhrase ORDER BY c DESC LIMIT 10"
 }

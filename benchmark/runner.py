@@ -123,7 +123,7 @@ def run_benchmark(client, config: dict) -> BenchmarkResult:
             )
         else:
             err = query_result.failed_iterations[0].error if query_result.failed_iterations else "unknown"
-            print(f"[{qi}/{len(queries)}] {name}: FAILED ({err}) | {display}", file=sys.stderr)
+            print(f"\033[91m[{qi}/{len(queries)}] {name}: FAILED ({err}) | {display}\033[0m", file=sys.stderr)
 
         benchmark_result.query_results.append(query_result)
 

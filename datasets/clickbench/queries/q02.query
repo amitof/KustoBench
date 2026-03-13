@@ -1,5 +1,5 @@
 {
   "description": "Simple aggregations: sum, count, average",
-  "kql": "hits\n| summarize sum(AdvEngineID), count(), avg(ResolutionWidth)",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| summarize sum(AdvEngineID), count(), avg(ResolutionWidth)",
   "sql": "SELECT SUM(AdvEngineID), COUNT(*), AVG(ResolutionWidth) FROM hits"
 }
