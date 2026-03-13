@@ -108,4 +108,5 @@ CREATE TABLE hits (
     URLHash Int64,
     CLID Int32
 ) ENGINE = MergeTree()
-ORDER BY (CounterID, EventDate, UserID, EventTime, WatchID);
+ORDER BY (CounterID, EventDate, UserID, EventTime, WatchID)
+SETTINGS storage_policy = 'blob_cached';
