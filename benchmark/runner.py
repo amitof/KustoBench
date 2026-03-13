@@ -111,7 +111,7 @@ def run_benchmark(client, config: dict) -> BenchmarkResult:
             query_result.iterations.append(iter_result)
 
         # Print per-query summary
-        display = query_text[:120].replace('\n', ' ')
+        display = query_text[:200].replace('\n', ' ')
         if query_result.successful_iterations:
             if iterations == 1:
                 timing = f"duration={query_result.min_seconds:.3f}s"
