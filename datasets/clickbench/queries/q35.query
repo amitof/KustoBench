@@ -1,5 +1,5 @@
 {
-  "description": "Top 25 UserID + SearchPhrase for counter 62",
-  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where CounterID == 62 and EventDate >= datetime(2013-07-01) and EventDate <= datetime(2013-07-31)\n| summarize hint.strategy=shuffle c = count() by UserID, SearchPhrase\n| top 25 by c desc",
-  "sql": "SELECT ClientIP, ClientIP - 1, ClientIP - 2, ClientIP - 3, COUNT(*) AS c FROM hits GROUP BY ClientIP, ClientIP - 1, ClientIP - 2, ClientIP - 3 ORDER BY c DESC LIMIT 10"
+  "description": "Top 10 ClientIP groups by count",
+  "sql": "SELECT ClientIP, ClientIP - 1, ClientIP - 2, ClientIP - 3, COUNT(*) AS c FROM hits GROUP BY ClientIP, ClientIP - 1, ClientIP - 2, ClientIP - 3 ORDER BY c DESC LIMIT 10",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| extend ClientIP1 = ClientIP - 1, ClientIP2 = ClientIP - 2, ClientIP3 = ClientIP - 3\n| summarize c = count() by ClientIP, ClientIP1, ClientIP2, ClientIP3\n| top 10 by c desc"
 }

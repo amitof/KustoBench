@@ -1,5 +1,5 @@
 {
-  "description": "First 10 google URL rows (repeated)",
-  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where URL contains \"google\"\n| order by EventTime asc\n| take 10",
-  "sql": "SELECT DATE_TRUNC('minute', EventTime) AS M, COUNT(*) AS PageViews FROM hits WHERE CounterID = 62 AND EventDate >= '2013-07-14' AND EventDate <= '2013-07-15' AND IsRefresh = 0 AND DontCountHits = 0 GROUP BY DATE_TRUNC('minute', EventTime) ORDER BY DATE_TRUNC('minute', EventTime) LIMIT 10 OFFSET 1000"
+  "description": "Page views per minute for counter 62 (July 14-15, OFFSET 1000)",
+  "sql": "SELECT DATE_TRUNC('minute', EventTime) AS M, COUNT(*) AS PageViews FROM hits WHERE CounterID = 62 AND EventDate >= '2013-07-14' AND EventDate <= '2013-07-15' AND IsRefresh = 0 AND DontCountHits = 0 GROUP BY DATE_TRUNC('minute', EventTime) ORDER BY DATE_TRUNC('minute', EventTime) LIMIT 10 OFFSET 1000",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where CounterID == 62 and EventDate >= datetime(2013-07-14) and EventDate <= datetime(2013-07-15) and IsRefresh == 0 and DontCountHits == 0\n| summarize PageViews = count() by M = bin(EventTime, 1m)\n| order by M asc\n| serialize rn = row_number()\n| where rn > 1000 and rn <= 1010\n| project-away rn"
 }
