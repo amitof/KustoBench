@@ -94,6 +94,12 @@ def _run_load_clickhouse(client, config: dict, table_name: str, schema: str, dat
     print(f"  Creating table…", file=sys.stderr)
     client.execute_control(command)
 
+    # Validate table exists
+    result = client._query_raw(f"EXISTS TABLE {table_name}").strip()
+    if result != "1":
+        raise RuntimeError(f"Table '{table_name}' was not created successfully.")
+    print(f"  Table '{table_name}' verified.", file=sys.stderr)
+
     # 3. Ingest via INSERT INTO ... SELECT FROM url()
     fmt = data.get("format", "csv")
     ch_format = {"csv": "CSV", "tsv": "TabSeparated", "parquet": "Parquet"}.get(fmt, "CSV")
@@ -104,6 +110,13 @@ def _run_load_clickhouse(client, config: dict, table_name: str, schema: str, dat
     print(f"  Ingesting {total} file(s) with parallelism={parallelism}…", file=sys.stderr)
 
     settings = "SETTINGS max_threads = 1, input_format_allow_errors_num = 100, input_format_allow_errors_ratio = 0.01"
+    settings_params = {
+        "max_threads": "1",
+        "input_format_allow_errors_num": "100",
+        "input_format_allow_errors_ratio": "0.01",
+        "input_format_csv_skip_first_lines": "0",
+    }
+    failed: list = []
 
     def _ingest_one(idx_and_entry):
         idx, file_entry = idx_and_entry
@@ -113,21 +126,25 @@ def _run_load_clickhouse(client, config: dict, table_name: str, schema: str, dat
 
         if storage_key:
             insert_sql = (
-                f"INSERT INTO {table_name} SELECT * FROM "
-                f"azureBlobStorage("
+                f"INSERT INTO {table_name} "
+                f"SELECT * FROM azureBlobStorage("
                 f"'{_blob_account_url(url)}', "
                 f"'{_blob_container(url)}', "
                 f"'{_blob_path(url)}', "
                 f"'{_blob_account_name(url)}', "
                 f"'{storage_key}', "
-                f"'{ch_format}') {settings}"
+                f"'{ch_format}')"
             )
         else:
             insert_sql = (
-                f"INSERT INTO {table_name} SELECT * FROM "
-                f"url('{url}', '{ch_format}') {settings}"
+                f"INSERT INTO {table_name} "
+                f"SELECT * FROM url('{url}', '{ch_format}')"
             )
-        client.execute_control(insert_sql)
+        try:
+            client._query_raw(insert_sql, extra_params=settings_params)
+        except Exception as exc:
+            print(f"  ERROR ingesting {fname}: {exc}", file=sys.stderr)
+            failed.append(fname)
 
     work = list(enumerate(valid_files, 1))
 
@@ -140,7 +157,9 @@ def _run_load_clickhouse(client, config: dict, table_name: str, schema: str, dat
             for future in as_completed(futures):
                 future.result()
 
-    print(f"  Load complete – ingested {total} file(s).", file=sys.stderr)
+    if failed:
+        print(f"  WARNING: {len(failed)}/{total} file(s) failed: {', '.join(failed)}", file=sys.stderr)
+    print(f"  Load complete – ingested {total - len(failed)}/{total} file(s).", file=sys.stderr)
 
 
 def _blob_account_url(url: str) -> str:
