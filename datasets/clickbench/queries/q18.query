@@ -1,5 +1,5 @@
 {
   "description": "Top 10 UserID + minute + SearchPhrase",
-  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| summarize c = count() by UserID, m = datetime_part(\"minute\", EventTime), SearchPhrase\n| top 10 by c desc",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| summarize hint.strategy=shuffle c = count() by UserID, m = datetime_part(\"minute\", EventTime), SearchPhrase\n| top 10 by c desc",
   "sql": "SELECT UserID, extract(minute FROM EventTime) AS m, SearchPhrase, COUNT(*) FROM hits GROUP BY UserID, m, SearchPhrase ORDER BY COUNT(*) DESC LIMIT 10"
 }

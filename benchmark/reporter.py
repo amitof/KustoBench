@@ -18,28 +18,47 @@ def _fmt(value: Optional[float], decimals: int = 3) -> str:
     return f"{value:.{decimals}f}"
 
 
+def _is_single_iteration(result: BenchmarkResult) -> bool:
+    """Return True when every query was run for exactly one measured iteration."""
+    return all(
+        len(qr.iterations) == 1 for qr in result.query_results
+    ) if result.query_results else False
+
+
 def _query_summary_rows(result: BenchmarkResult) -> list:
+    single = _is_single_iteration(result)
     rows = []
     for qr in result.query_results:
         success = len(qr.successful_iterations)
         failure = len(qr.failed_iterations)
-        row = [
-            qr.name,
-            success,
-            failure,
-            _fmt(qr.min_seconds),
-            _fmt(qr.mean_seconds),
-            _fmt(qr.median_seconds),
-            _fmt(qr.max_seconds),
-            _fmt(qr.stdev_seconds),
-        ]
+        if single:
+            row = [
+                qr.name,
+                _fmt(qr.min_seconds),
+            ]
+        else:
+            row = [
+                qr.name,
+                success,
+                failure,
+                _fmt(qr.min_seconds),
+                _fmt(qr.mean_seconds),
+                _fmt(qr.median_seconds),
+                _fmt(qr.max_seconds),
+                _fmt(qr.stdev_seconds),
+            ]
         if failure > 0:
             row = [f"\033[91m{cell}\033[0m" for cell in row]
         rows.append(row)
     return rows
 
 
-_HEADERS = [
+_HEADERS_SINGLE = [
+    "Query",
+    "Duration (s)",
+]
+
+_HEADERS_MULTI = [
     "Query",
     "OK",
     "Fail",
@@ -63,7 +82,8 @@ def report_table(result: BenchmarkResult, file=None) -> str:
         The formatted table as a string.
     """
     rows = _query_summary_rows(result)
-    table = tabulate(rows, headers=_HEADERS, tablefmt="github")
+    headers = _HEADERS_SINGLE if _is_single_iteration(result) else _HEADERS_MULTI
+    table = tabulate(rows, headers=headers, tablefmt="github")
     footer = f"\nTotal wall-clock time: {result.total_elapsed_seconds:.3f}s\n"
     output = table + footer
     if file is not None:
@@ -83,7 +103,8 @@ def report_csv(result: BenchmarkResult, file=None) -> str:
     """
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(_HEADERS)
+    headers = _HEADERS_SINGLE if _is_single_iteration(result) else _HEADERS_MULTI
+    writer.writerow(headers)
     writer.writerows(_query_summary_rows(result))
     output = buf.getvalue()
     if file is not None:

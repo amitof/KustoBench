@@ -1,5 +1,5 @@
 {
   "description": "Top 10 UserID + SearchPhrase combinations",
-  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| summarize c = count() by UserID, SearchPhrase\n| top 10 by c desc",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| summarize hint.strategy=shuffle c = count() by UserID, SearchPhrase\n| top 10 by c desc",
   "sql": "SELECT UserID, SearchPhrase, COUNT(*) FROM hits GROUP BY UserID, SearchPhrase ORDER BY COUNT(*) DESC LIMIT 10"
 }
