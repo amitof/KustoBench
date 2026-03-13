@@ -1,5 +1,13 @@
 {
   "description": "First 10 search phrases ordered by time then phrase",
   "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where SearchPhrase != \"\"\n| order by EventTime asc, SearchPhrase asc\n| take 10",
-  "sql": "SELECT SearchPhrase FROM hits WHERE SearchPhrase <> '' ORDER BY EventTime, SearchPhrase LIMIT 10"
+  "sql": "SELECT SearchPhrase FROM hits WHERE SearchPhrase <> '' ORDER BY EventTime, SearchPhrase LIMIT 10",
+  "variants": [
+    {
+      "suffix": "single_sort",
+      "description": "First 10 search phrases ordered by time only",
+      "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where SearchPhrase != \"\"\n| order by EventTime asc\n| take 10",
+      "sql": "SELECT SearchPhrase FROM hits WHERE SearchPhrase <> '' ORDER BY EventTime LIMIT 10"
+    }
+  ]
 }

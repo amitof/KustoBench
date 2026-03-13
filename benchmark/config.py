@@ -181,7 +181,16 @@ def apply_dataset(config: dict, dataset_name: str) -> dict:
     dialect = "sql" if env_type == "clickhouse" else "kql"
     resolved = []
     for q in ds["queries"]:
-        query_text = q.get(dialect, "") or q.get("kql", "")
-        resolved.append({"name": q["name"], "query": query_text})
+        variants = q.get("variants", [])
+        if variants:
+            # Use variant queries instead of the original
+            for variant in variants:
+                variant_text = variant.get(dialect, "") or variant.get("kql", "")
+                if variant_text:
+                    suffix = variant.get("suffix", "variant")
+                    resolved.append({"name": f"{q['name']}_{suffix}", "query": variant_text})
+        else:
+            query_text = q.get(dialect, "") or q.get("kql", "")
+            resolved.append({"name": q["name"], "query": query_text})
     config["queries"] = resolved
     return config

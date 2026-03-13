@@ -3,9 +3,29 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
+
+
+def _split_kql_commands(text: str) -> List[str]:
+    """Split a block of KQL text into individual dot-commands.
+
+    Each command starts with a line beginning with '.' (e.g. .create, .alter).
+    Multi-line commands (like .create table with column definitions) are kept
+    together until the next dot-command line.
+    """
+    commands: List[str] = []
+    current_lines: List[str] = []
+    for line in text.splitlines():
+        if re.match(r'^\.\w', line) and current_lines:
+            commands.append("\n".join(current_lines).strip())
+            current_lines = []
+        current_lines.append(line)
+    if current_lines:
+        commands.append("\n".join(current_lines).strip())
+    return [c for c in commands if c]
 
 
 def run_load(client, config: dict) -> None:
@@ -62,13 +82,21 @@ def _run_load_adx(client, table_name: str, schema: str, data: dict, files: List[
     print(f"  Dropping table {table_name} (if exists)…", file=sys.stderr)
     client.execute_control(command)
 
-    # 2. Create
+    # 2. Create table and run post-create commands (e.g. .alter column)
     lines = schema.strip().splitlines()
-    command = "\n".join(ln for ln in lines if not ln.lstrip().startswith("//")).strip()
-    if not command:
+    cleaned = "\n".join(ln for ln in lines if not ln.lstrip().startswith("//")).strip()
+    if not cleaned:
         raise ValueError("Schema file contains no commands after stripping comments.")
+
+    # Split on lines that start with a dot-command (e.g. .create, .alter)
+    commands = _split_kql_commands(cleaned)
     print(f"  Creating table…", file=sys.stderr)
-    client.execute_control(command)
+    client.execute_control(commands[0])
+
+    # Run any additional commands (e.g. .alter column encoding policies)
+    for cmd in commands[1:]:
+        print(f"  Running: {cmd[:80]}…", file=sys.stderr)
+        client.execute_control(cmd)
 
     # 3. Ingest
     fmt = data.get("format", "parquet")

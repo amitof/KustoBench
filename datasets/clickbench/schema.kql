@@ -110,3 +110,33 @@
     URLHash: long,
     CLID: int
 )
+
+// Disable inverted term indexing on all string columns
+.alter column hits.Title policy encoding type='identifier'
+.alter column hits.URL policy encoding type='identifier'
+.alter column hits.Referer policy encoding type='identifier'
+.alter column hits.FlashMinor2 policy encoding type='identifier'
+.alter column hits.UserAgentMinor policy encoding type='identifier'
+.alter column hits.MobilePhoneModel policy encoding type='identifier'
+.alter column hits.Params policy encoding type='identifier'
+.alter column hits.SearchPhrase policy encoding type='identifier'
+.alter column hits.PageCharset policy encoding type='identifier'
+.alter column hits.OriginalURL policy encoding type='identifier'
+.alter column hits.HitColor policy encoding type='identifier'
+.alter column hits.BrowserLanguage policy encoding type='identifier'
+.alter column hits.BrowserCountry policy encoding type='identifier'
+.alter column hits.SocialNetwork policy encoding type='identifier'
+.alter column hits.SocialAction policy encoding type='identifier'
+.alter column hits.SocialSourcePage policy encoding type='identifier'
+.alter column hits.ParamOrderID policy encoding type='identifier'
+.alter column hits.ParamCurrency policy encoding type='identifier'
+.alter column hits.OpenstatServiceName policy encoding type='identifier'
+.alter column hits.OpenstatCampaignID policy encoding type='identifier'
+.alter column hits.OpenstatAdID policy encoding type='identifier'
+.alter column hits.OpenstatSourceID policy encoding type='identifier'
+.alter column hits.UTMSource policy encoding type='identifier'
+.alter column hits.UTMMedium policy encoding type='identifier'
+.alter column hits.UTMCampaign policy encoding type='identifier'
+.alter column hits.UTMContent policy encoding type='identifier'
+.alter column hits.UTMTerm policy encoding type='identifier'
+.alter column hits.FromTag policy encoding type='identifier'
