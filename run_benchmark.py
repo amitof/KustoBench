@@ -26,9 +26,17 @@ import time
 
 from benchmark.config import apply_dataset, load_config
 from benchmark.kusto_client import KustoBenchClient
+from benchmark.clickhouse_client import ClickHouseClient
 from benchmark.reporter import report
 from benchmark.runner import run_benchmark
 from benchmark.load import run_load
+
+
+def _create_client(config: dict):
+    """Create the appropriate client based on env_type."""
+    if config.get("env_type") == "clickhouse":
+        return ClickHouseClient(config)
+    return KustoBenchClient(config)
 
 
 def parse_args(argv=None) -> argparse.Namespace:
@@ -55,6 +63,14 @@ def parse_args(argv=None) -> argparse.Namespace:
         metavar="ENV_FILE",
         help="Destroy infrastructure defined by an environment YAML file. "
              "Deletes the resource group and all its resources.",
+    )
+    parser.add_argument(
+        "--clean",
+        default=None,
+        metavar="ENV_OR_URI",
+        help="Drop all tables in the database (keeps the database itself). "
+             "Accepts an env YAML file or a connection URI "
+             "(adx://host/db, clickhouse://host:port/db).",
     )
     parser.add_argument(
         "--load",
@@ -115,8 +131,8 @@ def parse_args(argv=None) -> argparse.Namespace:
 def main(argv=None) -> int:
     args = parse_args(argv)
 
-    if not args.deploy and not args.destroy and not args.load and not args.run:
-        print("ERROR: Specify at least one of --deploy, --destroy, --load, or --run.", file=sys.stderr)
+    if not args.deploy and not args.destroy and not args.clean and not args.load and not args.run:
+        print("ERROR: Specify at least one of --deploy, --destroy, --clean, --load, or --run.", file=sys.stderr)
         return 1
 
     try:
@@ -182,6 +198,30 @@ def main(argv=None) -> int:
             print(f"ERROR destroying infrastructure: {exc}", file=sys.stderr)
             return 1
 
+    # ── Clean ────────────────────────────────────────────────────────────
+    if args.clean:
+        try:
+            env = _resolve_env(args.clean, _load_env_cached)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+
+        _apply_env_to_config(config, env)
+
+        try:
+            with _create_client(config) as client:
+                print(f"Dropping all tables in database '{config.get('database', '')}'…", file=sys.stderr)
+                dropped = client.drop_all_tables()
+                if dropped:
+                    for t in dropped:
+                        print(f"  Dropped table: {t}", file=sys.stderr)
+                    print(f"  {len(dropped)} table(s) dropped.", file=sys.stderr)
+                else:
+                    print("  No tables found.", file=sys.stderr)
+        except Exception as exc:
+            print(f"ERROR cleaning database: {exc}", file=sys.stderr)
+            return 1
+
     # ── Load ─────────────────────────────────────────────────────────────
     if args.load:
         env_or_uri, dataset_name = args.load
@@ -201,7 +241,7 @@ def main(argv=None) -> int:
             return 1
 
         try:
-            with KustoBenchClient(config) as client:
+            with _create_client(config) as client:
                 _print_cluster_info(client)
                 print(f"Loading dataset '{dataset_name}'…", file=sys.stderr)
                 t0 = time.perf_counter()
@@ -244,7 +284,7 @@ def main(argv=None) -> int:
                 return 1
 
         try:
-            with KustoBenchClient(config) as client:
+            with _create_client(config) as client:
                 _print_cluster_info(client)
                 result = run_benchmark(client, config)
         except Exception as exc:
@@ -318,13 +358,33 @@ def _apply_env_to_config(config: dict, env: dict) -> None:
             uri = result.stdout.strip()
             if uri:
                 config["cluster_url"] = uri
+    if env.get("host"):
+        config["host"] = env["host"]
+    elif env.get("type") == "clickhouse" and env.get("deploy"):
+        deploy = env["deploy"]
+        rg = deploy.get("resource_group", "")
+        base = deploy.get("base_name", "kustobench-ch")
+        if rg:
+            result = subprocess.run(
+                ["az", "network", "public-ip", "show",
+                 "--resource-group", rg,
+                 "--name", f"{base}-pip-0",
+                 "--query", "ipAddress", "-o", "tsv"],
+                capture_output=True, text=True, shell=True,
+            )
+            ip = result.stdout.strip()
+            if ip:
+                config["host"] = ip
+                env["host"] = ip
+    if env.get("port"):
+        config["port"] = env["port"]
     if env.get("database"):
         config["database"] = env["database"]
     if env.get("auth"):
         config["auth"] = env["auth"]
 
 
-def _print_cluster_info(client: KustoBenchClient) -> None:
+def _print_cluster_info(client) -> None:
     """Query and display cluster hardware information."""
     info = client.get_cluster_info()
     lines = ["Cluster Info:"]

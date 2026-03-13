@@ -162,6 +162,18 @@ class KustoBenchClient:
 
         return info
 
+    def drop_all_tables(self) -> list:
+        """Drop all tables in the current database. Returns list of dropped table names."""
+        response = self._client.execute(self._database, ".show tables")
+        primary = response.primary_results[0] if response.primary_results else None
+        tables = []
+        if primary:
+            for row in primary:
+                tables.append(row["TableName"])
+        for t in tables:
+            self._client.execute_mgmt(self._database, f".drop table ['{t}'] ifexists")
+        return tables
+
     def close(self) -> None:
         """Close the underlying Kusto client."""
         self._client.close()

@@ -6,8 +6,6 @@ import time
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from .kusto_client import KustoBenchClient
-
 
 @dataclass
 class IterationResult:
@@ -74,7 +72,7 @@ class BenchmarkResult:
     total_elapsed_seconds: float = 0.0
 
 
-def run_benchmark(client: KustoBenchClient, config: dict) -> BenchmarkResult:
+def run_benchmark(client, config: dict) -> BenchmarkResult:
     """Run the benchmark defined in *config* using *client*.
 
     The runner executes each query for ``warmup_iterations`` warm-up rounds
@@ -134,7 +132,7 @@ def run_benchmark(client: KustoBenchClient, config: dict) -> BenchmarkResult:
 
 
 def _execute_once(
-    client: KustoBenchClient,
+    client,
     query: str,
     iteration: int = 0,
 ) -> IterationResult:
