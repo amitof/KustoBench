@@ -20,6 +20,7 @@ Usage::
 
 import argparse
 import os
+import subprocess
 import sys
 import time
 
@@ -144,12 +145,13 @@ def main(argv=None) -> int:
     def _load_env_cached(path: str) -> dict:
         rp = os.path.normpath(path)
         if rp not in _env_cache:
+            from infra.deploy import load_env
             _env_cache[rp] = load_env(path)
         return _env_cache[rp]
 
     # ── Deploy ───────────────────────────────────────────────────────────
     if args.deploy:
-        from infra.deploy import deploy_env, load_env
+        from infra.deploy import deploy_env
 
         try:
             env = _load_env_cached(args.deploy)
@@ -166,7 +168,7 @@ def main(argv=None) -> int:
 
     # ── Destroy ──────────────────────────────────────────────────────────
     if args.destroy:
-        from infra.deploy import destroy, load_env
+        from infra.deploy import destroy
 
         try:
             env = _load_env_cached(args.destroy)
@@ -175,7 +177,7 @@ def main(argv=None) -> int:
                 print("ERROR: No resource_group in env deploy settings.", file=sys.stderr)
                 return 1
             destroy(rg)
-            print(f"Resource group '{rg}' deletion initiated.", file=sys.stderr)
+            print(f"Resource group '{rg}' destroyed.", file=sys.stderr)
         except Exception as exc:
             print(f"ERROR destroying infrastructure: {exc}", file=sys.stderr)
             return 1
@@ -262,7 +264,6 @@ def _resolve_env(env_or_uri: str, load_cached) -> dict:
     """Return an env dict from a file path or a connection URI."""
     if "://" in env_or_uri:
         return _parse_connection(env_or_uri)
-    from infra.deploy import load_env
     return load_cached(env_or_uri)
 
 
@@ -303,10 +304,20 @@ def _apply_env_to_config(config: dict, env: dict) -> None:
         config["cluster_url"] = env["cluster_url"]
     elif env.get("type") == "adx" and env.get("deploy"):
         deploy = env["deploy"]
+        rg = deploy.get("resource_group", "")
         name = deploy.get("cluster_name", "")
-        loc = deploy.get("location", "")
-        if name and loc:
-            config["cluster_url"] = f"https://{name}.{loc}.kusto.windows.net"
+        if rg and name:
+            result = subprocess.run(
+                ["az", "resource", "show",
+                 "--resource-group", rg,
+                 "--name", name,
+                 "--resource-type", "Microsoft.Kusto/clusters",
+                 "--query", "properties.uri", "-o", "tsv"],
+                capture_output=True, text=True, shell=True,
+            )
+            uri = result.stdout.strip()
+            if uri:
+                config["cluster_url"] = uri
     if env.get("database"):
         config["database"] = env["database"]
     if env.get("auth"):

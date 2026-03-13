@@ -79,6 +79,8 @@ def deploy_env(env: dict) -> dict:
             ssh_public_key_path=deploy_cfg.get("ssh_public_key_path", "~/.ssh/id_rsa.pub"),
             admin_username=deploy_cfg.get("admin_username", "benchadmin"),
             base_name=deploy_cfg.get("base_name", "kustobench-ch"),
+            storage_account_name=deploy_cfg.get("storage_account_name", "kustobenchch"),
+            storage_container_name=deploy_cfg.get("storage_container_name", "clickhouse-data"),
             database=deploy_cfg.get("database", "TestDB"),
         )
 
@@ -127,6 +129,8 @@ def deploy_clickhouse(
     ssh_public_key_path: str = "~/.ssh/id_rsa.pub",
     admin_username: str = "benchadmin",
     base_name: str = "kustobench-ch",
+    storage_account_name: str = "kustobenchch",
+    storage_container_name: str = "clickhouse-data",
     database: str = "TestDB",
 ) -> dict:
     """Deploy ClickHouse OSS on N Linux VMs using the Bicep template.
@@ -153,6 +157,8 @@ def deploy_clickhouse(
             "adminUsername": admin_username,
             "sshPublicKey": ssh_public_key,
             "baseName": base_name,
+            "storageAccountName": storage_account_name,
+            "storageContainerName": storage_container_name,
         },
     )
     outputs = _extract_outputs(result)
@@ -170,13 +176,24 @@ def deploy_clickhouse(
 
 
 def destroy(resource_group: str) -> None:
-    """Delete the resource group and all its resources."""
+    """Delete the resource group and all its resources, waiting for completion."""
     print(f"  Deleting resource group {resource_group}…", file=sys.stderr)
     subprocess.run(
         ["az", "group", "delete", "--name", resource_group, "--yes", "--no-wait"],
         check=True,
         shell=True,
     )
+    while True:
+        result = subprocess.run(
+            ["az", "group", "exists", "--name", resource_group],
+            capture_output=True, text=True, shell=True,
+        )
+        if result.stdout.strip().lower() == "false":
+            break
+        ts = datetime.now().strftime("%H:%M:%S")
+        print(f"  [{ts}] Still deleting…", file=sys.stderr)
+        time.sleep(30)
+    print(f"  Resource group '{resource_group}' deleted.", file=sys.stderr)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
