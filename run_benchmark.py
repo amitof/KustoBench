@@ -20,6 +20,7 @@ Usage::
 
 import argparse
 import os
+import subprocess
 import sys
 import time
 
@@ -266,10 +267,20 @@ def _apply_env_to_config(config: dict, env: dict) -> None:
         config["cluster_url"] = env["cluster_url"]
     elif env.get("type") == "adx" and env.get("deploy"):
         deploy = env["deploy"]
+        rg = deploy.get("resource_group", "")
         name = deploy.get("cluster_name", "")
-        loc = deploy.get("location", "")
-        if name and loc:
-            config["cluster_url"] = f"https://{name}.{loc}.kusto.windows.net"
+        if rg and name:
+            result = subprocess.run(
+                ["az", "resource", "show",
+                 "--resource-group", rg,
+                 "--name", name,
+                 "--resource-type", "Microsoft.Kusto/clusters",
+                 "--query", "properties.uri", "-o", "tsv"],
+                capture_output=True, text=True, shell=True,
+            )
+            uri = result.stdout.strip()
+            if uri:
+                config["cluster_url"] = uri
     if env.get("database"):
         config["database"] = env["database"]
     if env.get("auth"):
