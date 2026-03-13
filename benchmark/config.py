@@ -123,6 +123,14 @@ def load_dataset(name: str) -> dict:
         with open(schema_path, "r", encoding="utf-8") as fh:
             schema_text = fh.read()
 
+    # Read SQL schema file (for ClickHouse)
+    sql_schema_file = manifest.get("schema_sql_file", "schema.sql")
+    sql_schema_path = os.path.join(dataset_dir, sql_schema_file)
+    sql_schema_text = ""
+    if os.path.isfile(sql_schema_path):
+        with open(sql_schema_path, "r", encoding="utf-8") as fh:
+            sql_schema_text = fh.read()
+
     # Read query files from the queries directory
     queries_dir = manifest.get("queries_dir", "queries")
     queries_path = os.path.join(dataset_dir, queries_dir)
@@ -140,6 +148,7 @@ def load_dataset(name: str) -> dict:
         "description": manifest.get("description", ""),
         "data": manifest.get("data", {}),
         "schema": schema_text,
+        "schema_sql": sql_schema_text,
         "queries": queries,
     }
 
@@ -165,6 +174,7 @@ def apply_dataset(config: dict, dataset_name: str) -> dict:
         "description": ds["description"],
         "data": ds["data"],
         "schema": ds["schema"],
+        "schema_sql": ds.get("schema_sql", ""),
     }
 
     env_type = config.get("env_type", "adx")

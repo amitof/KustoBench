@@ -66,7 +66,9 @@ cat > /etc/clickhouse-server/config.d/storage.xml << EOF
     <storage_configuration>
         <disks>
             <azure_blob>
-                <type>azure_blob_storage</type>
+                <type>object_storage</type>
+                <object_storage_type>azure_blob_storage</object_storage_type>
+                <metadata_type>local</metadata_type>
                 <storage_account_url>https://${STORAGE_ACCOUNT}.blob.core.windows.net</storage_account_url>
                 <container_name>${STORAGE_CONTAINER}</container_name>
                 <account_name>${STORAGE_ACCOUNT}</account_name>
@@ -77,7 +79,6 @@ cat > /etc/clickhouse-server/config.d/storage.xml << EOF
                 <disk>azure_blob</disk>
                 <path>/var/lib/clickhouse/disks/azure_blob_cache/</path>
                 <max_size>200Gi</max_size>
-                <do_not_evict_index_and_mark_files>true</do_not_evict_index_and_mark_files>
             </azure_blob_cache>
         </disks>
         <policies>
@@ -97,6 +98,11 @@ chown -R clickhouse:clickhouse /var/lib/clickhouse/disks
 
 # ── Start ClickHouse ────────────────────────────────────────────────────────
 systemctl enable clickhouse-server
-systemctl restart clickhouse-server
+if ! systemctl restart clickhouse-server; then
+  echo "ERROR: clickhouse-server failed to start. Dumping logs:" >&2
+  journalctl -u clickhouse-server --no-pager -n 50 >&2 || true
+  tail -100 /var/log/clickhouse-server/clickhouse-server.err.log >&2 || true
+  exit 1
+fi
 
 echo "ClickHouse node ${NODE_INDEX}/${NODE_COUNT} ready."
