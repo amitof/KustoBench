@@ -132,7 +132,10 @@ def _run_load_clickhouse(client, config: dict, table_name: str, schema: str, dat
     fmt = data.get("format", "csv")
     ch_format = {"csv": "CSV", "tsv": "TabSeparated", "parquet": "Parquet"}.get(fmt, "CSV")
     storage_key = data.get("storage_key", "")
-    valid_files = [f for f in files if f.get("url")]
+    valid_files = [f for f in files if f.get("url") and not f.get("skip")]
+    skipped_ch = [f for f in files if f.get("skip")]
+    if skipped_ch:
+        print(f"  Skipping {len(skipped_ch)} file(s) marked as corrupted.", file=sys.stderr)
     total = len(valid_files)
     parallelism = max(1, min(parallelism, total))
     print(f"  Ingesting {total} file(s) with parallelism={parallelism}…", file=sys.stderr)
@@ -277,7 +280,10 @@ def _ingest_files(
     parallelism: int = 1,
 ) -> None:
     """Ingest data files into the table."""
-    valid_files = [f for f in files if f.get("url")]
+    valid_files = [f for f in files if f.get("url") and not f.get("skip")]
+    skipped = [f for f in files if f.get("skip")]
+    if skipped:
+        print(f"  Skipping {len(skipped)} file(s) marked as corrupted.", file=sys.stderr)
     if not valid_files:
         print("  WARNING: No data files to ingest.", file=sys.stderr)
         return

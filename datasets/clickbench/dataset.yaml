@@ -57,8 +57,10 @@ data:
     - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0036.csv"
     - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0037.csv"
     - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0038.csv"
-    - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0039.csv"
-    - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0040.csv"
+    - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0039.csv"  # corrupted – wrong number of fields
+      skip: true
+    - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0040.csv"  # corrupted – wrong number of fields
+      skip: true
     - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0041.csv"
     - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0042.csv"
     - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0043.csv"
@@ -82,8 +84,10 @@ data:
     - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0061.csv"
     - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0062.csv"
     - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0063.csv"
-    - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0064.csv"
-    - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0065.csv"
+    - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0064.csv"  # corrupted – wrong number of fields
+      skip: true
+    - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0065.csv"  # corrupted – wrong number of fields
+      skip: true
     - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0066.csv"
     - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0067.csv"
     - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0068.csv"
