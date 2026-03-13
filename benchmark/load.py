@@ -143,6 +143,7 @@ def _run_load_clickhouse(client, config: dict, table_name: str, schema: str, dat
         "input_format_allow_errors_num": "100",
         "input_format_allow_errors_ratio": "0.01",
         "input_format_csv_skip_first_lines": "0",
+        "input_format_csv_detect_header": "0",
     }
     failed: list = []
 
@@ -250,12 +251,12 @@ def _print_table_size(client, table_name: str, env_type: str) -> None:
 
 
 def _resolve_parallelism(client, data: dict) -> int:
-    """Determine ingestion parallelism as 75% of the cluster's total cores."""
+    """Determine ingestion parallelism from the cluster's total cores."""
     try:
         info = client.get_cluster_info()
         total_cores = info.get("total_cores")
         if total_cores and total_cores > 0:
-            parallelism = max(1, int(0.75 * total_cores))
+            parallelism = total_cores
             print(f"  Cluster has {total_cores} cores → ingestion parallelism = {parallelism}",
                   file=sys.stderr)
             return parallelism

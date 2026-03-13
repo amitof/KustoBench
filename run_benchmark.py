@@ -178,6 +178,21 @@ def main(argv=None) -> int:
             if outputs.get("queryEndpoint"):
                 env["host"] = outputs["queryEndpoint"]
             print(f"Infrastructure deployed ({env['type']}).", file=sys.stderr)
+
+            # Set ingestion capacity policy on ADX after deploy
+            if env["type"] == "adx":
+                _apply_env_to_config(config, env)
+                with _create_client(config) as client:
+                    policy_cmd = (
+                        '.alter cluster policy capacity ```\n'
+                        '{\n'
+                        '  "IngestionCapacity": {\n'
+                        '    "CoreUtilizationCoefficient": 1\n'
+                        '  }\n'
+                        '}\n```'
+                    )
+                    client.execute_control(policy_cmd)
+                    print("  Ingestion capacity policy set (CoreUtilizationCoefficient=1).", file=sys.stderr)
         except Exception as exc:
             print(f"ERROR deploying infrastructure: {exc}", file=sys.stderr)
             return 1
