@@ -1,5 +1,5 @@
 {
-  "description": "Count for counter 62 (July 2013, non-refresh)",
-  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where CounterID == 62 and EventDate >= datetime(2013-07-01) and EventDate <= datetime(2013-07-31) and IsRefresh == 0 and DontCountHits == 0\n| count",
-  "sql": "SELECT WatchID, ClientIP, COUNT(*) AS c, SUM(IsRefresh), AVG(ResolutionWidth) FROM hits WHERE SearchPhrase <> '' GROUP BY WatchID, ClientIP ORDER BY c DESC LIMIT 10"
+  "description": "Top 10 WatchID + ClientIP by count (non-empty phrase)",
+  "sql": "SELECT WatchID, ClientIP, COUNT(*) AS c, SUM(IsRefresh), AVG(ResolutionWidth) FROM hits WHERE SearchPhrase <> '' GROUP BY WatchID, ClientIP ORDER BY c DESC LIMIT 10",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where SearchPhrase != \"\"\n| summarize c = count(), sum(IsRefresh), avg(ResolutionWidth) by WatchID, ClientIP\n| top 10 by c desc"
 }

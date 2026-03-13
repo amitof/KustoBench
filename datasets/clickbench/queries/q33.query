@@ -1,5 +1,5 @@
 {
-  "description": "Bottom 25 search phrases for counter 62",
-  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where CounterID == 62 and EventDate >= datetime(2013-07-01) and EventDate <= datetime(2013-07-31) and IsRefresh == 0 and DontCountHits == 0 and SearchPhrase != \"\"\n| summarize hint.strategy=shuffle c = count() by SearchPhrase\n| order by c asc\n| take 25",
-  "sql": "SELECT URL, COUNT(*) AS c FROM hits GROUP BY URL ORDER BY c DESC LIMIT 10"
+  "description": "Top 10 URLs by count",
+  "sql": "SELECT URL, COUNT(*) AS c FROM hits GROUP BY URL ORDER BY c DESC LIMIT 10",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| summarize hint.strategy=shuffle c = count() by URL\n| top 10 by c desc"
 }

@@ -1,5 +1,5 @@
 {
-  "description": "Page views per minute for counter 62 (July 2013)",
-  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where CounterID == 62 and EventDate >= datetime(2013-07-01) and EventDate <= datetime(2013-07-31) and IsRefresh == 0 and DontCountHits == 0\n| summarize hint.strategy=shuffle PageViews = count() by M = bin(EventTime, 1m)\n| order by M asc\n| serialize rn = row_number()\n| where rn > 1000 and rn <= 1010\n| project-away rn",
-  "sql": "SELECT SearchEngineID, ClientIP, COUNT(*) AS c, SUM(IsRefresh), AVG(ResolutionWidth) FROM hits WHERE SearchPhrase <> '' GROUP BY SearchEngineID, ClientIP ORDER BY c DESC LIMIT 10"
+  "description": "Top 10 SearchEngineID + ClientIP by count (non-empty phrase)",
+  "sql": "SELECT SearchEngineID, ClientIP, COUNT(*) AS c, SUM(IsRefresh), AVG(ResolutionWidth) FROM hits WHERE SearchPhrase <> '' GROUP BY SearchEngineID, ClientIP ORDER BY c DESC LIMIT 10",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where SearchPhrase != \"\"\n| summarize c = count(), sum(IsRefresh), avg(ResolutionWidth) by SearchEngineID, ClientIP\n| top 10 by c desc"
 }
