@@ -17,7 +17,6 @@ description: >
 data:
   format: csv
   table_name: hits
-  ingestion_parallelism_factor: 1.0
   storage_key: ""  # Set your Azure Storage account key here
   files:
     - url: "https://amitofstorage.blob.core.windows.net/clickbenchraw/part_0001.csv"

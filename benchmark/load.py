@@ -78,18 +78,15 @@ def _create_table(client: KustoBenchClient, schema: str) -> None:
 
 
 def _resolve_parallelism(client: KustoBenchClient, data: dict) -> int:
-    """Determine ingestion parallelism from cluster core count.
+    """Determine ingestion parallelism as 75% of the cluster's total cores.
 
-    Uses ``data["ingestion_parallelism_factor"]`` (default 0.75) multiplied
-    by the cluster's total core count.  Falls back to 1 if the cluster info
-    is unavailable.
+    Falls back to 1 if the cluster info is unavailable.
     """
-    factor = float(data.get("ingestion_parallelism_factor", 0.75))
     try:
         info = client.get_cluster_info()
         total_cores = info.get("total_cores")
         if total_cores and total_cores > 0:
-            parallelism = max(1, int(factor * total_cores))
+            parallelism = max(1, int(0.75 * total_cores))
             print(f"  Cluster has {total_cores} cores → ingestion parallelism = {parallelism}",
                   file=sys.stderr)
             return parallelism
