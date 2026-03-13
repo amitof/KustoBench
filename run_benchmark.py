@@ -29,7 +29,7 @@ from benchmark.kusto_client import KustoBenchClient
 from benchmark.clickhouse_client import ClickHouseClient
 from benchmark.reporter import report
 from benchmark.runner import run_benchmark
-from benchmark.load import run_load
+from benchmark.load import run_load, _print_table_size
 
 
 def _create_client(config: dict):
@@ -286,6 +286,9 @@ def main(argv=None) -> int:
         try:
             with _create_client(config) as client:
                 _print_cluster_info(client)
+                table_name = config.get("dataset", {}).get("data", {}).get("table_name", "")
+                if table_name:
+                    _print_table_size(client, table_name, config.get("env_type", "adx"))
                 result = run_benchmark(client, config)
         except Exception as exc:
             print(f"ERROR during benchmark: {exc}", file=sys.stderr)

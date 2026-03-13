@@ -50,6 +50,8 @@ def run_load(client, config: dict) -> None:
     else:
         _run_load_adx(client, table_name, schema, data, files)
 
+    _print_table_size(client, table_name, env_type)
+
 
 def _run_load_adx(client, table_name: str, schema: str, data: dict, files: List[dict]) -> None:
     """ADX load path: .drop/.create table + .ingest."""
@@ -101,7 +103,7 @@ def _run_load_clickhouse(client, config: dict, table_name: str, schema: str, dat
     parallelism = max(1, min(parallelism, total))
     print(f"  Ingesting {total} file(s) with parallelism={parallelism}…", file=sys.stderr)
 
-    settings = "SETTINGS input_format_allow_errors_num = 100, input_format_allow_errors_ratio = 0.01"
+    settings = "SETTINGS max_threads = 1, input_format_allow_errors_num = 100, input_format_allow_errors_ratio = 0.01"
 
     def _ingest_one(idx_and_entry):
         idx, file_entry = idx_and_entry
@@ -169,6 +171,35 @@ def _blob_path(url: str) -> str:
     parsed = urlparse(url)
     parts = parsed.path.strip("/").split("/", 1)
     return parts[1] if len(parts) > 1 else ""
+
+
+def _print_table_size(client, table_name: str, env_type: str) -> None:
+    """Query and print row count and table size after ingestion."""
+    try:
+        if env_type == "clickhouse":
+            raw_count = client._query_raw(f"SELECT count() FROM {table_name}").strip()
+            row_count = int(raw_count)
+            raw_size = client._query_raw(
+                f"SELECT sum(bytes_on_disk) FROM system.parts "
+                f"WHERE table = '{table_name}' AND active"
+            ).strip()
+            size_bytes = int(raw_size)
+        else:
+            resp_count = client._client.execute(client._database, f"{table_name} | count")
+            primary = resp_count.primary_results[0] if resp_count.primary_results else None
+            row_count = int(primary[0][0]) if primary and len(primary) > 0 else 0
+            resp_size = client._client.execute_mgmt(
+                client._database,
+                f".show table ['{table_name}'] extents | summarize sum(ExtentSize)"
+            )
+            primary = resp_size.primary_results[0] if resp_size.primary_results else None
+            size_bytes = int(primary[0][0]) if primary and len(primary) > 0 else 0
+
+        gb = size_bytes / (1024 ** 3)
+        print(f"  Table '{table_name}': {row_count:,} rows, {size_bytes:,} bytes ({gb:.2f} GB)",
+              file=sys.stderr)
+    except Exception as exc:
+        print(f"  WARNING: Could not determine table stats: {exc}", file=sys.stderr)
 
 
 def _resolve_parallelism(client, data: dict) -> int:
