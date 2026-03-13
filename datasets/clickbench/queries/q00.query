@@ -1,5 +1,5 @@
 {
   "description": "Total row count",
-  "kql": "hits\n| count",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| count",
   "sql": "SELECT COUNT(*) FROM hits"
 }

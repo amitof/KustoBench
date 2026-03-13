@@ -1,5 +1,5 @@
 {
   "description": "Average of UserID",
-  "kql": "hits\n| summarize avg(UserID)",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| summarize avg(UserID)",
   "sql": "SELECT AVG(UserID) FROM hits"
 }

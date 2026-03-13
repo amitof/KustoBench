@@ -1,5 +1,5 @@
 {
   "description": "First 10 search phrases ordered by time then phrase",
-  "kql": "hits\n| where SearchPhrase != \"\"\n| order by EventTime asc, SearchPhrase asc\n| take 10",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where SearchPhrase != \"\"\n| order by EventTime asc, SearchPhrase asc\n| take 10",
   "sql": "SELECT SearchPhrase FROM hits WHERE SearchPhrase <> '' ORDER BY EventTime, SearchPhrase LIMIT 10"
 }

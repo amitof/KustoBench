@@ -1,5 +1,5 @@
 {
   "description": "Top 25 referer domains (>100k hits) by avg referer length",
-  "kql": "hits\n| where Referer != \"\"\n| extend key = extract(\"^https?://(?:www\\\\.)?([^/]+)/.*$\", 1, Referer)\n| summarize l = avg(strlen(Referer)), c = count(), min(Referer) by key\n| where c > 100000\n| top 25 by l desc",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where Referer != \"\"\n| extend key = extract(\"^https?://(?:www\\\\.)?([^/]+)/.*$\", 1, Referer)\n| summarize l = avg(strlen(Referer)), c = count(), min(Referer) by key\n| where c > 100000\n| top 25 by l desc",
   "sql": "SELECT REGEXP_REPLACE(Referer, '^https?://(?:www\\.)?([^/]+)/.*$', '\\1') AS k, AVG(length(Referer)) AS l, COUNT(*) AS c, MIN(Referer) FROM hits WHERE Referer <> '' GROUP BY k HAVING COUNT(*) > 100000 ORDER BY l DESC LIMIT 25"
 }

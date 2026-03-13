@@ -1,5 +1,5 @@
 {
   "description": "Distinct count of UserID",
-  "kql": "hits\n| summarize dcount(UserID)",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| summarize dcount(UserID)",
   "sql": "SELECT COUNT(DISTINCT UserID) FROM hits"
 }
