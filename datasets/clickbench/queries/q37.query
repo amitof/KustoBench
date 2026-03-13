@@ -1,5 +1,5 @@
 {
-  "description": "Top 25 UserID + minute + SearchPhrase for counter 62",
-  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where CounterID == 62 and EventDate >= datetime(2013-07-01) and EventDate <= datetime(2013-07-31)\n| summarize hint.strategy=shuffle c = count() by UserID, m = datetime_part(\"minute\", EventTime), SearchPhrase\n| top 25 by c desc",
-  "sql": "SELECT Title, COUNT(*) AS PageViews FROM hits WHERE CounterID = 62 AND EventDate >= '2013-07-01' AND EventDate <= '2013-07-31' AND DontCountHits = 0 AND IsRefresh = 0 AND Title <> '' GROUP BY Title ORDER BY PageViews DESC LIMIT 10"
+  "description": "Top 10 titles by page views for counter 62 (July 2013)",
+  "sql": "SELECT Title, COUNT(*) AS PageViews FROM hits WHERE CounterID = 62 AND EventDate >= '2013-07-01' AND EventDate <= '2013-07-31' AND DontCountHits = 0 AND IsRefresh = 0 AND Title <> '' GROUP BY Title ORDER BY PageViews DESC LIMIT 10",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where CounterID == 62 and EventDate >= datetime(2013-07-01) and EventDate <= datetime(2013-07-31) and DontCountHits == 0 and IsRefresh == 0 and Title != \"\"\n| summarize hint.strategy=shuffle PageViews = count() by Title\n| top 10 by PageViews desc"
 }
