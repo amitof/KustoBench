@@ -13,7 +13,7 @@
     CounterID: int,
     ClientIP: int,
     RegionID: int,
-    UserID: string,
+    UserID: long,
     CounterClass: int,
     OS: int,
     UserAgent: int,
@@ -115,7 +115,6 @@
 .alter column hits.Title policy encoding type='identifier'
 .alter column hits.URL policy encoding type='identifier'
 .alter column hits.Referer policy encoding type='identifier'
-.alter column hits.UserID policy encoding type='identifier'
 .alter column hits.FlashMinor2 policy encoding type='identifier'
 .alter column hits.UserAgentMinor policy encoding type='identifier'
 .alter column hits.MobilePhoneModel policy encoding type='identifier'
