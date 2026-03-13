@@ -6,9 +6,8 @@ load / run pipeline can work with both ADX and ClickHouse transparently.
 
 from __future__ import annotations
 
+import http.client
 import urllib.parse
-import urllib.request
-import urllib.error
 import json
 
 
@@ -16,10 +15,10 @@ class ClickHouseClient:
     """Thin HTTP wrapper for ClickHouse queries matching the KustoBenchClient API."""
 
     def __init__(self, config: dict) -> None:
-        host = config.get("host", "localhost")
-        port = config.get("port", 8123)
+        self._host = config.get("host", "localhost")
+        self._port = int(config.get("port", 8123))
         self._database = config.get("database", "default")
-        self._base_url = f"http://{host}:{port}/"
+        self._base_url = f"http://{self._host}:{self._port}/"
         # Verify connectivity
         self._query_raw("SELECT 1")
 
@@ -108,17 +107,47 @@ class ClickHouseClient:
 
     # ── Internal ─────────────────────────────────────────────────────────
 
-    def _query_raw(self, query: str) -> str:
-        """Send a query via HTTP POST to ClickHouse, return the response body."""
-        params = urllib.parse.urlencode({"database": self._database})
-        url = f"{self._base_url}?{params}"
-        data = query.encode("utf-8")
-        req = urllib.request.Request(url, data=data, method="POST")
-        try:
-            with urllib.request.urlopen(req, timeout=600) as resp:
-                return resp.read().decode("utf-8")
-        except urllib.error.HTTPError as exc:
-            error_body = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(
-                f"ClickHouse HTTP {exc.code}: {error_body.strip()}"
-            ) from exc
+    def _query_raw(self, query: str, extra_params: dict | None = None) -> str:
+        """Send a query via HTTP POST to ClickHouse, return the response body.
+
+        Creates a fresh TCP connection per call so it is safe to use from
+        multiple threads concurrently.  Retries up to 3 times on transient
+        errors (syntax errors caused by body truncation, connection resets).
+        """
+        p = {"database": self._database}
+        if extra_params:
+            p.update(extra_params)
+        path = f"/?{urllib.parse.urlencode(p)}"
+        body = query.encode("utf-8")
+        content_length = str(len(body))
+
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            conn = http.client.HTTPConnection(self._host, self._port, timeout=600)
+            try:
+                conn.request(
+                    "POST", path, body=body,
+                    headers={
+                        "Content-Length": content_length,
+                        "Content-Type": "application/octet-stream",
+                    },
+                )
+                resp = conn.getresponse()
+                response_body = resp.read().decode("utf-8")
+                if resp.status == 200:
+                    return response_body
+                # Retry on truncation errors (position == end of query)
+                if "failed at position" in response_body and "(end of query)" in response_body:
+                    last_exc = RuntimeError(
+                        f"ClickHouse HTTP {resp.status}: {response_body.strip()}"
+                    )
+                    continue
+                raise RuntimeError(
+                    f"ClickHouse HTTP {resp.status}: {response_body.strip()}"
+                )
+            except (ConnectionError, OSError) as exc:
+                last_exc = exc
+                continue
+            finally:
+                conn.close()
+        raise last_exc  # type: ignore[misc]
