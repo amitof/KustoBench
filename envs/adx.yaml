@@ -1,0 +1,24 @@
+# ADX environment — 2 nodes, 8 cores / 64 GB each
+# Used with: --deploy envs/adx.yaml
+#             --load envs/adx.yaml clickbench
+#             --run envs/adx.yaml clickbench
+
+type: adx
+
+# ── Connection (populated after deploy, or set manually for existing clusters) ──
+cluster_url: "https://amitof-ws2025.swedencentral.dev.kusto.windows.net"
+database: "TestDB"
+
+# ── Authentication ──────────────────────────────────────────────────────────
+auth:
+  method: interactive
+
+# ── Deployment settings (used by --deploy) ──────────────────────────────────
+deploy:
+  resource_group: "kustobench-rg"
+  location: "swedencentral"
+  cluster_name: "kustobench-adx"
+  sku: "Standard_E8as_v5+1TB_PS"
+  sku_tier: "Standard"
+  capacity: 2
+  database: "TestDB"

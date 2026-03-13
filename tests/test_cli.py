@@ -24,20 +24,25 @@ def test_parse_args_all_options():
         "--output", "out.json",
         "--iterations", "5",
         "--warmup", "2",
-        "--dataset", "clickbench",
-        "--setup",
+        "--load", "envs/adx.yaml", "clickbench",
+        "--run", "envs/adx.yaml", "clickbench",
     ])
     assert args.format == "json"
     assert args.output == "out.json"
     assert args.iterations == 5
     assert args.warmup == 2
-    assert args.dataset == "clickbench"
-    assert args.setup is True
+    assert args.load == ["envs/adx.yaml", "clickbench"]
+    assert args.run == ["envs/adx.yaml", "clickbench"]
 
 
-def test_parse_args_setup_default_false():
-    args = parse_args(["--config", "c.yaml"])
-    assert args.setup is False
+def test_parse_args_deploy():
+    args = parse_args(["--deploy", "envs/adx.yaml"])
+    assert args.deploy == "envs/adx.yaml"
+
+
+def test_parse_args_destroy():
+    args = parse_args(["--destroy", "envs/adx.yaml"])
+    assert args.destroy == "envs/adx.yaml"
 
 
 def test_parse_args_default_config():

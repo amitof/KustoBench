@@ -1,4 +1,4 @@
-"""Setup phase for KustoBench – re-creates tables and ingests data."""
+"""Load phase for KustoBench – re-creates tables and ingests data."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ if TYPE_CHECKING:
     from .kusto_client import KustoBenchClient
 
 
-def run_setup(client: KustoBenchClient, config: dict) -> None:
-    """Execute the setup phase: drop/create table and ingest data files.
+def run_load(client: KustoBenchClient, config: dict) -> None:
+    """Execute the load phase: drop/create table and ingest data files.
 
     The dataset section of *config* must contain a ``schema`` (the full
     ``.create table`` command text) and a ``data`` dict with ``table_name``
@@ -55,7 +55,8 @@ def run_setup(client: KustoBenchClient, config: dict) -> None:
 
     # 3. Ingest each data file
     fmt = data.get("format", "parquet")
-    _ingest_files(client, table_name, fmt, files, parallelism=parallelism)
+    storage_key = data.get("storage_key", "")
+    _ingest_files(client, table_name, fmt, files, storage_key=storage_key, parallelism=parallelism)
 
 
 def _drop_table(client: KustoBenchClient, table_name: str) -> None:
@@ -105,6 +106,7 @@ def _ingest_files(
     fmt: str,
     files: List[dict],
     *,
+    storage_key: str = "",
     parallelism: int = 1,
 ) -> None:
     """Ingest data files into the table."""
@@ -121,9 +123,13 @@ def _ingest_files(
     def _ingest_one(idx_and_entry):
         idx, file_entry = idx_and_entry
         url = file_entry["url"]
+        if storage_key:
+            source = f"h'{url};{storage_key}'"
+        else:
+            source = f"'{url}'"
         command = (
             f".ingest into table ['{table_name}'] "
-            f"('{url}') with (format='{fmt}')"
+            f"({source}) with (format='{fmt}')"
         )
         print(
             f"  Ingesting file {idx}/{total}: {url.rsplit('/', 1)[-1]}",

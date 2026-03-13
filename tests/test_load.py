@@ -43,38 +43,38 @@ def _make_config(table_name="hits",
     }
 
 
-# ── run_setup ────────────────────────────────────────────────────────────────
+# ── run_load ─────────────────────────────────────────────────────────────────
 
 
-def test_run_setup_full_flow():
+def test_run_load_full_flow():
     client = _mock_client()
     config = _make_config(files=[
         {"url": "https://example.com/data_0.parquet"},
         {"url": "https://example.com/data_1.parquet"},
     ])
-    run_setup(client, config)
+    run_load(client, config)
     # Should have 4 calls: drop + create + 2 ingests
     assert client.execute_control.call_count == 4
 
 
-def test_run_setup_no_dataset():
+def test_run_load_no_dataset():
     client = _mock_client()
     with pytest.raises(ValueError, match="No dataset"):
-        run_setup(client, {"queries": []})
+        run_load(client, {"queries": []})
 
 
-def test_run_setup_empty_schema():
+def test_run_load_empty_schema():
     client = _mock_client()
     config = _make_config(schema="")
     with pytest.raises(ValueError, match="schema is empty"):
-        run_setup(client, config)
+        run_load(client, config)
 
 
-def test_run_setup_no_table_name():
+def test_run_load_no_table_name():
     client = _mock_client()
     config = _make_config(table_name="")
     with pytest.raises(ValueError, match="table_name"):
-        run_setup(client, config)
+        run_load(client, config)
 
 
 # ── _drop_table ──────────────────────────────────────────────────────────────

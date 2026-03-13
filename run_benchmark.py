@@ -1,10 +1,21 @@
 #!/usr/bin/env python3
-"""KustoBench - CLI entry point for running benchmarks against Azure Data Explorer.
+"""KustoBench - CLI entry point for deploying, loading, and benchmarking.
 
 Usage::
 
-    python run_benchmark.py --config config.yaml
-    python run_benchmark.py --config config.yaml --format json --output results.json
+    # Deploy an environment
+    python run_benchmark.py --deploy envs/adx-dev.yaml
+
+    # Load a dataset into an environment
+    python run_benchmark.py --load envs/adx-dev.yaml clickbench
+
+    # Run benchmark queries against an environment
+    python run_benchmark.py --run envs/adx-dev.yaml clickbench
+
+    # All three in sequence
+    python run_benchmark.py --deploy envs/adx-dev.yaml \\
+        --load envs/adx-dev.yaml clickbench \\
+        --run envs/adx-dev.yaml clickbench
 """
 
 import argparse
@@ -14,13 +25,13 @@ from benchmark.config import apply_dataset, load_config
 from benchmark.kusto_client import KustoBenchClient
 from benchmark.reporter import report
 from benchmark.runner import run_benchmark
-from benchmark.setup import run_setup
+from benchmark.load import run_load
 
 
 def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="run_benchmark",
-        description="Run a benchmark suite against an Azure Data Explorer (Kusto) cluster.",
+        description="Deploy, load data, and benchmark against ADX or ClickHouse clusters.",
     )
     parser.add_argument(
         "--config",
@@ -29,10 +40,34 @@ def parse_args(argv=None) -> argparse.Namespace:
         help="Path to the YAML configuration file (default: config.yaml).",
     )
     parser.add_argument(
-        "--dataset",
+        "--deploy",
         default=None,
-        metavar="NAME",
-        help="Load a named dataset (e.g. 'clickbench'). Overrides queries in the config file.",
+        metavar="ENV_FILE",
+        help="Deploy infrastructure from an environment YAML file "
+             "(e.g. 'envs/adx.yaml').",
+    )
+    parser.add_argument(
+        "--destroy",
+        default=None,
+        metavar="ENV_FILE",
+        help="Destroy infrastructure defined by an environment YAML file. "
+             "Deletes the resource group and all its resources.",
+    )
+    parser.add_argument(
+        "--load",
+        default=None,
+        nargs=2,
+        metavar=("ENV_FILE", "DATASET"),
+        help="Load a dataset into an environment. "
+             "Example: --load envs/adx.yaml clickbench",
+    )
+    parser.add_argument(
+        "--run",
+        default=None,
+        nargs=2,
+        metavar=("ENV_FILE", "DATASET"),
+        help="Run benchmark queries from a dataset against an environment. "
+             "Example: --run envs/adx.yaml clickbench",
     )
     parser.add_argument(
         "--format",
@@ -60,17 +95,15 @@ def parse_args(argv=None) -> argparse.Namespace:
         metavar="N",
         help="Number of warm-up iterations per query (overrides config).",
     )
-    parser.add_argument(
-        "--setup",
-        action="store_true",
-        default=False,
-        help="Run the setup phase: drop/create table and ingest dataset files before benchmarking.",
-    )
     return parser.parse_args(argv)
 
 
 def main(argv=None) -> int:
     args = parse_args(argv)
+
+    if not args.deploy and not args.destroy and not args.load and not args.run:
+        print("ERROR: Specify at least one of --deploy, --destroy, --load, or --run.", file=sys.stderr)
+        return 1
 
     try:
         config = load_config(args.config)
@@ -80,14 +113,6 @@ def main(argv=None) -> int:
     except Exception as exc:  # noqa: BLE001
         print(f"ERROR loading configuration: {exc}", file=sys.stderr)
         return 1
-
-    # Apply dataset if requested
-    if args.dataset:
-        try:
-            apply_dataset(config, args.dataset)
-        except FileNotFoundError as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-            return 1
 
     # Apply CLI overrides
     if args.iterations is not None:
@@ -99,29 +124,109 @@ def main(argv=None) -> int:
     if args.output is not None:
         config["output"]["file"] = args.output
 
-    if not config.get("queries"):
-        print("WARNING: No queries defined in the configuration.", file=sys.stderr)
+    # ── Deploy ───────────────────────────────────────────────────────────
+    if args.deploy:
+        from infra.deploy import deploy_env, load_env
 
-    try:
-        with KustoBenchClient(config) as client:
-            _print_cluster_info(client)
-            if args.setup:
-                print("Running setup phase…", file=sys.stderr)
-                run_setup(client, config)
-            result = run_benchmark(client, config)
-    except ValueError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 1
-    except Exception as exc:  # noqa: BLE001
-        print(f"ERROR during benchmark: {exc}", file=sys.stderr)
-        return 1
+        try:
+            env = load_env(args.deploy)
+            deploy_env(env)
+            print(f"Infrastructure deployed ({env['type']}).", file=sys.stderr)
+        except Exception as exc:
+            print(f"ERROR deploying infrastructure: {exc}", file=sys.stderr)
+            return 1
 
-    report(
-        result,
-        fmt=config["output"].get("format", "table"),
-        output_file=config["output"].get("file"),
-    )
+    # ── Destroy ──────────────────────────────────────────────────────────
+    if args.destroy:
+        from infra.deploy import destroy, load_env
+
+        try:
+            env = load_env(args.destroy)
+            rg = env.get("deploy", {}).get("resource_group", "")
+            if not rg:
+                print("ERROR: No resource_group in env deploy settings.", file=sys.stderr)
+                return 1
+            destroy(rg)
+            print(f"Resource group '{rg}' deletion initiated.", file=sys.stderr)
+        except Exception as exc:
+            print(f"ERROR destroying infrastructure: {exc}", file=sys.stderr)
+            return 1
+
+    # ── Load ─────────────────────────────────────────────────────────────
+    if args.load:
+        env_file, dataset_name = args.load
+        from infra.deploy import load_env
+
+        try:
+            env = load_env(env_file)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+
+        _apply_env_to_config(config, env)
+
+        try:
+            apply_dataset(config, dataset_name)
+        except FileNotFoundError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+
+        try:
+            with KustoBenchClient(config) as client:
+                _print_cluster_info(client)
+                print(f"Loading dataset '{dataset_name}'…", file=sys.stderr)
+                run_load(client, config)
+        except Exception as exc:
+            print(f"ERROR loading data: {exc}", file=sys.stderr)
+            return 1
+
+    # ── Run ──────────────────────────────────────────────────────────────
+    if args.run:
+        env_file, dataset_name = args.run
+        from infra.deploy import load_env
+
+        try:
+            env = load_env(env_file)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+
+        _apply_env_to_config(config, env)
+
+        try:
+            apply_dataset(config, dataset_name)
+        except FileNotFoundError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+
+        if not config.get("queries"):
+            print("WARNING: No queries defined.", file=sys.stderr)
+
+        try:
+            with KustoBenchClient(config) as client:
+                _print_cluster_info(client)
+                result = run_benchmark(client, config)
+        except Exception as exc:
+            print(f"ERROR during benchmark: {exc}", file=sys.stderr)
+            return 1
+
+        report(
+            result,
+            fmt=config["output"].get("format", "table"),
+            output_file=config["output"].get("file"),
+        )
+
     return 0
+
+
+def _apply_env_to_config(config: dict, env: dict) -> None:
+    """Merge environment connection settings into the benchmark config."""
+    if env.get("cluster_url"):
+        config["cluster_url"] = env["cluster_url"]
+    if env.get("database"):
+        config["database"] = env["database"]
+    if env.get("auth"):
+        config["auth"] = env["auth"]
 
 
 def _print_cluster_info(client: KustoBenchClient) -> None:

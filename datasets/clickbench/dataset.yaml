@@ -18,6 +18,7 @@ data:
   format: csv
   table_name: hits
   ingestion_parallelism_factor: 1.0
+  storage_key: "YOUR_STORAGE_KEY_HERE"
   files:
     - url: "https://amitofstorage.blob.core.windows.net/clickbench/part_0001.csv.gz"
     - url: "https://amitofstorage.blob.core.windows.net/clickbench/part_0002.csv.gz"
