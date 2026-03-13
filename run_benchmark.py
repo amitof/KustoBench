@@ -264,6 +264,12 @@ def _apply_env_to_config(config: dict, env: dict) -> None:
         config["env_type"] = env["type"]
     if env.get("cluster_url"):
         config["cluster_url"] = env["cluster_url"]
+    elif env.get("type") == "adx" and env.get("deploy"):
+        deploy = env["deploy"]
+        name = deploy.get("cluster_name", "")
+        loc = deploy.get("location", "")
+        if name and loc:
+            config["cluster_url"] = f"https://{name}.{loc}.kusto.windows.net"
     if env.get("database"):
         config["database"] = env["database"]
     if env.get("auth"):

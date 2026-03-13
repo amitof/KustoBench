@@ -8,7 +8,11 @@ NODE_COUNT="${2:?node count required}"
 NODE_IPS="${3:?comma-separated node IPs required}"
 
 # ── Install ClickHouse ──────────────────────────────────────────────────────
-apt-get update -qq
+for i in 1 2 3; do
+  apt-get update -qq && break
+  echo "apt-get update failed (attempt $i), retrying in 10s…"
+  sleep 10
+done
 apt-get install -y -qq apt-transport-https ca-certificates curl gnupg
 
 curl -fsSL 'https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key' \
