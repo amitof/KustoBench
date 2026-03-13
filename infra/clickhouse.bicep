@@ -21,6 +21,35 @@ param sshPublicKey string
 @description('Base name for resources.')
 param baseName string = 'kustobench-ch'
 
+@description('Storage account name for durable blob storage backend.')
+param storageAccountName string = '${baseName}sa'
+
+@description('Blob container name for ClickHouse data.')
+param storageContainerName string = 'clickhouse-data'
+
+// ── Storage Account ─────────────────────────────────────────────────────────
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
+  name: storageAccountName
+  location: location
+  kind: 'StorageV2'
+  sku: { name: 'Standard_LRS' }
+  properties: {
+    allowBlobPublicAccess: false
+    minimumTlsVersion: 'TLS1_2'
+  }
+}
+
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
+  parent: storageAccount
+  name: 'default'
+}
+
+resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: blobService
+  name: storageContainerName
+}
+
 // ── Network ─────────────────────────────────────────────────────────────────
 
 resource vnet 'Microsoft.Network/virtualNetworks@2023-09-01' = {
@@ -189,7 +218,7 @@ resource extensions 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = 
       typeHandlerVersion: '2.1'
       autoUpgradeMinorVersion: true
       protectedSettings: {
-        commandToExecute: 'echo "${loadFileAsBase64('../infra/scripts/install-clickhouse.sh')}" | base64 -d > /tmp/install-clickhouse.sh && bash /tmp/install-clickhouse.sh ${i} ${vmCount} ${join(nodePrivateIps, ',')}'
+        commandToExecute: 'echo "${loadFileAsBase64('../infra/scripts/install-clickhouse.sh')}" | base64 -d > /tmp/install-clickhouse.sh && bash /tmp/install-clickhouse.sh ${i} ${vmCount} ${join(nodePrivateIps, ',')} ${storageAccount.name} ${storageAccount.listKeys().keys[0].value} ${storageContainerName}'
       }
     }
   }
@@ -198,3 +227,6 @@ resource extensions 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = 
 output vmPublicIps array = [for i in range(0, vmCount): publicIps[i].properties.ipAddress]
 output vmPrivateIps array = nodePrivateIps
 output queryEndpoint string = publicIps[0].properties.ipAddress
+output storageAccountName string = storageAccount.name
+output storageAccountKey string = storageAccount.listKeys().keys[0].value
+output storageContainerName string = storageContainerName

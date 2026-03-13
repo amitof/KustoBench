@@ -1,6 +1,7 @@
 """Benchmark runner for KustoBench."""
 
 import statistics
+import sys
 import time
 from dataclasses import dataclass, field
 from typing import List, Optional
@@ -94,7 +95,7 @@ def run_benchmark(client: KustoBenchClient, config: dict) -> BenchmarkResult:
     benchmark_result = BenchmarkResult()
     benchmark_start = time.perf_counter()
 
-    for query_def in queries:
+    for qi, query_def in enumerate(queries):
         name = query_def.get("name", "unnamed")
         query_text = query_def.get("query", "")
         if not query_text:
@@ -110,6 +111,21 @@ def run_benchmark(client: KustoBenchClient, config: dict) -> BenchmarkResult:
         for i in range(1, iterations + 1):
             iter_result = _execute_once(client, query_text, iteration=i)
             query_result.iterations.append(iter_result)
+
+        # Print per-query summary
+        display = query_text[:120].replace('\n', ' ')
+        if query_result.successful_iterations:
+            print(
+                f"[{qi}/{len(queries)}] {name}: "
+                f"min={query_result.min_seconds:.3f}s  "
+                f"max={query_result.max_seconds:.3f}s  "
+                f"avg={query_result.mean_seconds:.3f}s  "
+                f"| {display}",
+                file=sys.stderr,
+            )
+        else:
+            err = query_result.failed_iterations[0].error if query_result.failed_iterations else "unknown"
+            print(f"[{qi}/{len(queries)}] {name}: FAILED ({err}) | {display}", file=sys.stderr)
 
         benchmark_result.query_results.append(query_result)
 
