@@ -59,17 +59,19 @@ def parse_args(argv=None) -> argparse.Namespace:
         "--load",
         default=None,
         nargs=2,
-        metavar=("ENV_FILE", "DATASET"),
-        help="Load a dataset into an environment. "
+        metavar=("ENV_OR_URI", "DATASET"),
+        help="Load a dataset into an environment. First arg is an env YAML file "
+             "or a connection URI (adx://host/db, clickhouse://host:port/db). "
              "Example: --load envs/adx.yaml clickbench",
     )
     parser.add_argument(
         "--run",
         default=None,
         nargs=2,
-        metavar=("ENV_FILE", "DATASET"),
-        help="Run benchmark queries from a dataset against an environment. "
-             "Example: --run envs/adx.yaml clickbench",
+        metavar=("ENV_OR_URI", "DATASET"),
+        help="Run benchmark queries against an environment. First arg is an env "
+             "YAML file or a connection URI. "
+             "Example: --run adx://mycluster.kusto.windows.net/TestDB clickbench",
     )
     parser.add_argument(
         "--format",
@@ -180,11 +182,10 @@ def main(argv=None) -> int:
 
     # ── Load ─────────────────────────────────────────────────────────────
     if args.load:
-        env_file, dataset_name = args.load
-        from infra.deploy import load_env
+        env_or_uri, dataset_name = args.load
 
         try:
-            env = _load_env_cached(env_file)
+            env = _resolve_env(env_or_uri, _load_env_cached)
         except (FileNotFoundError, ValueError) as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
@@ -212,11 +213,10 @@ def main(argv=None) -> int:
 
     # ── Run ──────────────────────────────────────────────────────────────
     if args.run:
-        env_file, dataset_name = args.run
-        from infra.deploy import load_env
+        env_or_uri, dataset_name = args.run
 
         try:
-            env = _load_env_cached(env_file)
+            env = _resolve_env(env_or_uri, _load_env_cached)
         except (FileNotFoundError, ValueError) as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
@@ -256,6 +256,43 @@ def main(argv=None) -> int:
         )
 
     return 0
+
+
+def _resolve_env(env_or_uri: str, load_cached) -> dict:
+    """Return an env dict from a file path or a connection URI."""
+    if "://" in env_or_uri:
+        return _parse_connection(env_or_uri)
+    from infra.deploy import load_env
+    return load_cached(env_or_uri)
+
+
+def _parse_connection(uri: str) -> dict:
+    """Parse a connection URI into an env-like dict.
+
+    Formats:
+        adx://host/database
+        clickhouse://host:port/database
+    """
+    from urllib.parse import urlparse
+
+    parsed = urlparse(uri)
+    scheme = parsed.scheme.lower()
+    if scheme not in ("adx", "clickhouse"):
+        raise ValueError(f"Unsupported connection scheme '{scheme}'. Use adx:// or clickhouse://")
+
+    database = parsed.path.lstrip("/")
+    if not database:
+        raise ValueError("Connection URI must include a database: scheme://host/database")
+
+    if scheme == "adx":
+        host = parsed.hostname or ""
+        port = parsed.port
+        url = f"https://{host}" + (f":{port}" if port else "")
+        return {"type": "adx", "cluster_url": url, "database": database, "auth": {"method": "interactive"}}
+    else:
+        host = parsed.hostname or "localhost"
+        port = parsed.port or 8123
+        return {"type": "clickhouse", "host": host, "port": port, "database": database}
 
 
 def _apply_env_to_config(config: dict, env: dict) -> None:
