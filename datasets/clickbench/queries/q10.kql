@@ -1,5 +1,0 @@
-// Q10: Top 10 mobile phone models by distinct user count.
-hits
-| where MobilePhoneModel != ""
-| summarize u = dcount(UserID) by MobilePhoneModel
-| top 10 by u desc

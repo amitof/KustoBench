@@ -1,3 +1,0 @@
-// Q04: Distinct count of UserID.
-hits
-| summarize dcount(UserID)

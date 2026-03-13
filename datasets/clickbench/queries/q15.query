@@ -1,0 +1,5 @@
+{
+  "description": "Top 10 users by hit count",
+  "kql": "hits\n| summarize c = count() by UserID\n| top 10 by c desc",
+  "sql": "SELECT UserID, COUNT(*) FROM hits GROUP BY UserID ORDER BY COUNT(*) DESC LIMIT 10"
+}

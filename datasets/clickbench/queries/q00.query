@@ -1,0 +1,5 @@
+{
+  "description": "Total row count",
+  "kql": "hits\n| count",
+  "sql": "SELECT COUNT(*) FROM hits"
+}

@@ -1,6 +1,0 @@
-// Q27: Top 25 counters (>100k hits) by average URL length.
-hits
-| where URL != ""
-| summarize l = avg(strlen(URL)), c = count() by CounterID
-| where c > 100000
-| top 25 by l desc

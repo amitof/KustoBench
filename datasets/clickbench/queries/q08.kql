@@ -1,4 +1,0 @@
-// Q08: Top 10 regions by distinct user count.
-hits
-| summarize u = dcount(UserID) by RegionID
-| top 10 by u desc

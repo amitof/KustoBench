@@ -1,0 +1,5 @@
+{
+  "description": "Top 10 mobile phone + model combinations",
+  "kql": "hits\n| where MobilePhoneModel != \"\"\n| summarize u = dcount(UserID) by MobilePhone, MobilePhoneModel\n| top 10 by u desc",
+  "sql": "SELECT MobilePhone, MobilePhoneModel, COUNT(DISTINCT UserID) AS u FROM hits WHERE MobilePhoneModel <> '' GROUP BY MobilePhone, MobilePhoneModel ORDER BY u DESC LIMIT 10"
+}

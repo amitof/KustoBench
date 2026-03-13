@@ -1,0 +1,5 @@
+{
+  "description": "Top 10 SearchEngineID + phrase combinations",
+  "kql": "hits\n| where SearchPhrase != \"\"\n| summarize c = count() by SearchEngineID, SearchPhrase\n| top 10 by c desc",
+  "sql": "SELECT SearchEngineID, SearchPhrase, COUNT(*) AS c FROM hits WHERE SearchPhrase <> '' GROUP BY SearchEngineID, SearchPhrase ORDER BY c DESC LIMIT 10"
+}

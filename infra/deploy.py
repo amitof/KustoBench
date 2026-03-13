@@ -10,6 +10,11 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
+import time
+import urllib.request
+import urllib.parse
+from datetime import datetime
 from typing import Optional
 
 import yaml
@@ -60,6 +65,7 @@ def deploy_env(env: dict) -> dict:
             cluster_name=deploy_cfg.get("cluster_name", "kustobench-adx"),
             location=deploy_cfg.get("location", "swedencentral"),
             sku=deploy_cfg.get("sku", "Dev(No SLA)_Standard_E2a_v4"),
+            sku_tier=deploy_cfg.get("sku_tier", "Basic"),
             capacity=deploy_cfg.get("capacity", 1),
             database=deploy_cfg.get("database", "TestDB"),
         )
@@ -73,6 +79,7 @@ def deploy_env(env: dict) -> dict:
             ssh_public_key_path=deploy_cfg.get("ssh_public_key_path", "~/.ssh/id_rsa.pub"),
             admin_username=deploy_cfg.get("admin_username", "benchadmin"),
             base_name=deploy_cfg.get("base_name", "kustobench-ch"),
+            database=deploy_cfg.get("database", "TestDB"),
         )
 
     raise ValueError(f"Unknown environment type: {env_type}")
@@ -83,6 +90,7 @@ def deploy_adx(
     cluster_name: str,
     location: str = "swedencentral",
     sku: str = "Dev(No SLA)_Standard_E2a_v4",
+    sku_tier: str = "Basic",
     capacity: int = 1,
     database: str = "TestDB",
 ) -> dict:
@@ -101,6 +109,7 @@ def deploy_adx(
             "clusterName": cluster_name,
             "location": location,
             "skuName": sku,
+            "skuTier": sku_tier,
             "capacity": capacity,
             "databaseName": database,
         },
@@ -118,6 +127,7 @@ def deploy_clickhouse(
     ssh_public_key_path: str = "~/.ssh/id_rsa.pub",
     admin_username: str = "benchadmin",
     base_name: str = "kustobench-ch",
+    database: str = "TestDB",
 ) -> dict:
     """Deploy ClickHouse OSS on N Linux VMs using the Bicep template.
 
@@ -146,11 +156,16 @@ def deploy_clickhouse(
         },
     )
     outputs = _extract_outputs(result)
+    query_endpoint = outputs.get('queryEndpoint', '')
     print(
         f"  ClickHouse deployed: {vm_count} node(s), "
-        f"query endpoint = {outputs.get('queryEndpoint')}",
+        f"query endpoint = {query_endpoint}",
         file=sys.stderr,
     )
+
+    if database and query_endpoint:
+        _create_clickhouse_database(query_endpoint, database)
+
     return outputs
 
 
@@ -160,10 +175,28 @@ def destroy(resource_group: str) -> None:
     subprocess.run(
         ["az", "group", "delete", "--name", resource_group, "--yes", "--no-wait"],
         check=True,
+        shell=True,
     )
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
+
+def _create_clickhouse_database(endpoint: str, database: str) -> None:
+    """Create a database on the ClickHouse cluster via its HTTP API."""
+    url = f"http://{endpoint}:8123/"
+    query = f"CREATE DATABASE IF NOT EXISTS {database}"
+    data = query.encode("utf-8")
+    req = urllib.request.Request(url, data=data, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            resp.read()
+        print(f"  ClickHouse database '{database}' created.", file=sys.stderr)
+    except Exception as exc:
+        print(
+            f"  WARNING: Could not create database '{database}': {exc}",
+            file=sys.stderr,
+        )
 
 
 def _ensure_resource_group(name: str, location: str) -> None:
@@ -175,6 +208,7 @@ def _ensure_resource_group(name: str, location: str) -> None:
             "--output", "none",
         ],
         check=True,
+        shell=True,
     )
 
 
@@ -187,20 +221,73 @@ def _deploy_bicep(
     if deployment_name is None:
         deployment_name = f"kustobench-{os.path.splitext(os.path.basename(template))[0]}"
 
-    param_args = []
-    for k, v in parameters.items():
-        param_args.append(f"{k}={json.dumps(v)}")
+    # Write parameters to a temp JSON file to avoid shell escaping issues
+    # (e.g. SSH keys with special characters).
+    params_json = {k: {"value": v} for k, v in parameters.items()}
+    params_file = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".json", delete=False, encoding="utf-8",
+    )
+    try:
+        json.dump({"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#", "contentVersion": "1.0.0.0", "parameters": params_json}, params_file)
+        params_file.close()
 
-    cmd = [
-        "az", "deployment", "group", "create",
-        "--resource-group", resource_group,
-        "--template-file", template,
-        "--name", deployment_name,
-        "--parameters", *param_args,
-        "--output", "json",
-    ]
-    proc = subprocess.run(cmd, check=True, capture_output=True, text=True)
-    return json.loads(proc.stdout)
+        cmd = [
+            "az", "deployment", "group", "create",
+            "--resource-group", resource_group,
+            "--template-file", template,
+            "--name", deployment_name,
+            "--parameters", f"@{params_file.name}",
+            "--output", "json",
+            "--no-wait",
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True, shell=True)
+        if proc.returncode != 0:
+            error_msg = proc.stderr.strip() or proc.stdout.strip()
+            raise RuntimeError(f"Deployment submission failed: {error_msg}")
+    finally:
+        os.unlink(params_file.name)
+
+    print(f"  Deployment '{deployment_name}' submitted, waiting for completion…", file=sys.stderr)
+
+    return _wait_for_deployment(resource_group, deployment_name)
+
+
+def _wait_for_deployment(
+    resource_group: str,
+    deployment_name: str,
+    poll_interval: int = 30,
+) -> dict:
+    """Poll deployment status every *poll_interval* seconds until terminal."""
+    terminal_states = {"Succeeded", "Failed", "Canceled"}
+    while True:
+        proc = subprocess.run(
+            [
+                "az", "deployment", "group", "show",
+                "--resource-group", resource_group,
+                "--name", deployment_name,
+                "--output", "json",
+            ],
+            capture_output=True, text=True, shell=True,
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"Failed to query deployment status: {proc.stderr.strip()}"
+            )
+        result = json.loads(proc.stdout)
+        state = result.get("properties", {}).get("provisioningState", "Unknown")
+        now = datetime.now().strftime("%H:%M:%S")
+        print(f"  [{now}] Deployment state: {state}", file=sys.stderr)
+
+        if state in terminal_states:
+            if state != "Succeeded":
+                error = result.get("properties", {}).get("error", {})
+                raise RuntimeError(
+                    f"Deployment ended with state '{state}': "
+                    f"{json.dumps(error, indent=2)}"
+                )
+            return result
+
+        time.sleep(poll_interval)
 
 
 def _extract_outputs(result: dict) -> dict:

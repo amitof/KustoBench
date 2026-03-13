@@ -1,5 +1,0 @@
-// Q26: First 10 non-empty search phrases ordered by time then phrase.
-hits
-| where SearchPhrase != ""
-| order by EventTime asc, SearchPhrase asc
-| take 10

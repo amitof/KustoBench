@@ -123,7 +123,8 @@ resource nics 'Microsoft.Network/networkInterfaces@2023-09-01' = [
         {
           name: 'ipconfig1'
           properties: {
-            privateIPAllocationMethod: 'Dynamic'
+            privateIPAllocationMethod: 'Static'
+            privateIPAddress: '10.0.0.${10 + i}'
             subnet: { id: vnet.properties.subnets[0].id }
             publicIPAddress: { id: publicIps[i].id }
           }
@@ -134,7 +135,7 @@ resource nics 'Microsoft.Network/networkInterfaces@2023-09-01' = [
 ]
 
 // Build the list of private IPs for the cluster config.
-var nodePrivateIps = [for i in range(0, vmCount): nics[i].properties.ipConfigurations[0].properties.privateIPAddress]
+var nodePrivateIps = [for i in range(0, vmCount): '10.0.0.${10 + i}']
 
 resource vms 'Microsoft.Compute/virtualMachines@2023-09-01' = [
   for i in range(0, vmCount): {
@@ -187,11 +188,8 @@ resource extensions 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = 
       type: 'CustomScript'
       typeHandlerVersion: '2.1'
       autoUpgradeMinorVersion: true
-      settings: {
-        commandToExecute: 'bash /tmp/install-clickhouse.sh ${i} ${vmCount} ${join(nodePrivateIps, ',')}'
-      }
       protectedSettings: {
-        script: loadFileAsBase64('../infra/scripts/install-clickhouse.sh')
+        commandToExecute: 'echo "${loadFileAsBase64('../infra/scripts/install-clickhouse.sh')}" | base64 -d > /tmp/install-clickhouse.sh && bash /tmp/install-clickhouse.sh ${i} ${vmCount} ${join(nodePrivateIps, ',')}'
       }
     }
   }

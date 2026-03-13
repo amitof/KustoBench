@@ -1,3 +1,0 @@
-// Q38: Point lookup for a specific UserID (repeated).
-hits
-| where UserID == 435090932899640449

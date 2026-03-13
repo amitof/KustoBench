@@ -1,0 +1,5 @@
+{
+  "description": "Top 10 search phrases by distinct users",
+  "kql": "hits\n| where SearchPhrase != \"\"\n| summarize u = dcount(UserID) by SearchPhrase\n| top 10 by u desc",
+  "sql": "SELECT SearchPhrase, COUNT(DISTINCT UserID) AS u FROM hits WHERE SearchPhrase <> '' GROUP BY SearchPhrase ORDER BY u DESC LIMIT 10"
+}

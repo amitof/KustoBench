@@ -1,5 +1,0 @@
-// Q42: First 10 full rows from google URLs ordered by time (repeated).
-hits
-| where URL contains "google"
-| order by EventTime asc
-| take 10

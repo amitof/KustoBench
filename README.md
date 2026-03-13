@@ -15,7 +15,7 @@ Deploy infrastructure from an environment YAML file.
 python run_benchmark.py --deploy envs/adx.yaml
 
 # Deploy a 2-node ClickHouse cluster
-python run_benchmark.py --deploy envs/clickhouse-2node.yaml
+python run_benchmark.py --deploy envs/clickhouse.yaml
 ```
 
 ### `--destroy <env_file>`
@@ -24,7 +24,7 @@ Destroy infrastructure (deletes the resource group and all its resources).
 
 ```bash
 python run_benchmark.py --destroy envs/adx.yaml
-python run_benchmark.py --destroy envs/clickhouse-2node.yaml
+python run_benchmark.py --destroy envs/clickhouse.yaml
 ```
 
 ### `--load <env_file> <dataset>`
@@ -36,7 +36,7 @@ Load a dataset (create tables + ingest data) into an environment.
 python run_benchmark.py --load envs/adx.yaml clickbench
 
 # Load clickbench into ClickHouse
-python run_benchmark.py --load envs/clickhouse-2node.yaml clickbench
+python run_benchmark.py --load envs/clickhouse.yaml clickbench
 ```
 
 ### `--run <env_file> <dataset>`

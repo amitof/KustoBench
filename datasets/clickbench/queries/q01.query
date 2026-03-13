@@ -1,0 +1,5 @@
+{
+  "description": "Count rows with non-zero advertising engine",
+  "kql": "hits\n| where AdvEngineID != 0\n| count",
+  "sql": "SELECT COUNT(*) FROM hits WHERE AdvEngineID <> 0"
+}

@@ -1,3 +1,0 @@
-// Q06: Min and max of EventDate.
-hits
-| summarize min(EventDate), max(EventDate)

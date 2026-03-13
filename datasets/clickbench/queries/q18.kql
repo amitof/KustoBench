@@ -1,4 +1,0 @@
-// Q18: Top 10 user + minute + search phrase combinations by count.
-hits
-| summarize c = count() by UserID, m = datetime_part("minute", EventTime), SearchPhrase
-| top 10 by c desc

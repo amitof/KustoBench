@@ -1,0 +1,5 @@
+{
+  "description": "First 10 non-empty search phrases ordered by time",
+  "kql": "hits\n| where SearchPhrase != \"\"\n| order by EventTime asc\n| take 10",
+  "sql": "SELECT SearchPhrase FROM hits WHERE SearchPhrase <> '' ORDER BY EventTime LIMIT 10"
+}

@@ -6,7 +6,7 @@
 type: adx
 
 # ── Connection (populated after deploy, or set manually for existing clusters) ──
-cluster_url: "https://amitof-ws2025.swedencentral.dev.kusto.windows.net"
+cluster_url: ""
 database: "TestDB"
 
 # ── Authentication ──────────────────────────────────────────────────────────

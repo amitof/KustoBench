@@ -1,0 +1,5 @@
+{
+  "description": "Top 25 users by hit count for counter 62",
+  "kql": "hits\n| where CounterID == 62 and EventDate >= datetime(2013-07-01) and EventDate <= datetime(2013-07-31)\n| summarize c = count() by UserID\n| top 25 by c desc",
+  "sql": "SELECT 1, URL, COUNT(*) AS c FROM hits GROUP BY 1, URL ORDER BY c DESC LIMIT 10"
+}

@@ -1,8 +1,0 @@
-// Q31: Count for counter 62 in July 2013, non-refresh, counted hits.
-hits
-| where CounterID == 62
-    and EventDate >= datetime(2013-07-01)
-    and EventDate <= datetime(2013-07-31)
-    and IsRefresh == 0
-    and DontCountHits == 0
-| count

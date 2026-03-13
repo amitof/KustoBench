@@ -1,0 +1,5 @@
+{
+  "description": "Arbitrary 10 UserID + SearchPhrase groups",
+  "kql": "hits\n| summarize c = count() by UserID, SearchPhrase\n| take 10",
+  "sql": "SELECT UserID, SearchPhrase, COUNT(*) FROM hits GROUP BY UserID, SearchPhrase LIMIT 10"
+}

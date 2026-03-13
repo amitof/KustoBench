@@ -19,7 +19,9 @@ Usage::
 """
 
 import argparse
+import os
 import sys
+import time
 
 from benchmark.config import apply_dataset, load_config
 from benchmark.kusto_client import KustoBenchClient
@@ -95,6 +97,15 @@ def parse_args(argv=None) -> argparse.Namespace:
         metavar="N",
         help="Number of warm-up iterations per query (overrides config).",
     )
+    parser.add_argument(
+        "--query",
+        type=int,
+        nargs="+",
+        default=None,
+        metavar="INDEX",
+        help="Run only specific queries by index (0-based). "
+             "Example: --query 0 5 12",
+    )
     return parser.parse_args(argv)
 
 
@@ -124,13 +135,28 @@ def main(argv=None) -> int:
     if args.output is not None:
         config["output"]["file"] = args.output
 
+    # Cache of loaded env dicts, keyed by file path, so deploy outputs
+    # carry through to subsequent --load / --run in the same invocation.
+    _env_cache: dict[str, dict] = {}
+
+    def _load_env_cached(path: str) -> dict:
+        rp = os.path.normpath(path)
+        if rp not in _env_cache:
+            _env_cache[rp] = load_env(path)
+        return _env_cache[rp]
+
     # ── Deploy ───────────────────────────────────────────────────────────
     if args.deploy:
         from infra.deploy import deploy_env, load_env
 
         try:
-            env = load_env(args.deploy)
-            deploy_env(env)
+            env = _load_env_cached(args.deploy)
+            outputs = deploy_env(env)
+            # Update env with deployed connection info for subsequent commands.
+            if outputs.get("clusterUri"):
+                env["cluster_url"] = outputs["clusterUri"]
+            if outputs.get("queryEndpoint"):
+                env["host"] = outputs["queryEndpoint"]
             print(f"Infrastructure deployed ({env['type']}).", file=sys.stderr)
         except Exception as exc:
             print(f"ERROR deploying infrastructure: {exc}", file=sys.stderr)
@@ -141,7 +167,7 @@ def main(argv=None) -> int:
         from infra.deploy import destroy, load_env
 
         try:
-            env = load_env(args.destroy)
+            env = _load_env_cached(args.destroy)
             rg = env.get("deploy", {}).get("resource_group", "")
             if not rg:
                 print("ERROR: No resource_group in env deploy settings.", file=sys.stderr)
@@ -158,7 +184,7 @@ def main(argv=None) -> int:
         from infra.deploy import load_env
 
         try:
-            env = load_env(env_file)
+            env = _load_env_cached(env_file)
         except (FileNotFoundError, ValueError) as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
@@ -175,7 +201,11 @@ def main(argv=None) -> int:
             with KustoBenchClient(config) as client:
                 _print_cluster_info(client)
                 print(f"Loading dataset '{dataset_name}'…", file=sys.stderr)
+                t0 = time.perf_counter()
                 run_load(client, config)
+                elapsed = time.perf_counter() - t0
+                m, s = divmod(elapsed, 60)
+                print(f"Load completed in {int(m)}m {s:.1f}s.", file=sys.stderr)
         except Exception as exc:
             print(f"ERROR loading data: {exc}", file=sys.stderr)
             return 1
@@ -186,7 +216,7 @@ def main(argv=None) -> int:
         from infra.deploy import load_env
 
         try:
-            env = load_env(env_file)
+            env = _load_env_cached(env_file)
         except (FileNotFoundError, ValueError) as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
@@ -201,6 +231,15 @@ def main(argv=None) -> int:
 
         if not config.get("queries"):
             print("WARNING: No queries defined.", file=sys.stderr)
+
+        if args.query is not None:
+            all_queries = config.get("queries", [])
+            config["queries"] = [
+                q for i, q in enumerate(all_queries) if i in args.query
+            ]
+            if not config["queries"]:
+                print("ERROR: No queries matched the specified indices.", file=sys.stderr)
+                return 1
 
         try:
             with KustoBenchClient(config) as client:
@@ -221,6 +260,8 @@ def main(argv=None) -> int:
 
 def _apply_env_to_config(config: dict, env: dict) -> None:
     """Merge environment connection settings into the benchmark config."""
+    if env.get("type"):
+        config["env_type"] = env["type"]
     if env.get("cluster_url"):
         config["cluster_url"] = env["cluster_url"]
     if env.get("database"):

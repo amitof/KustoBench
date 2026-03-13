@@ -1,7 +1,0 @@
-// Q28: Top 25 referer domains (>100k hits) by average referer length.
-hits
-| where Referer != ""
-| extend key = extract("^https?://(?:www\\.)?([^/]+)/.*$", 1, Referer)
-| summarize l = avg(strlen(Referer)), c = count(), min(Referer) by key
-| where c > 100000
-| top 25 by l desc

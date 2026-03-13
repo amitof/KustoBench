@@ -18,7 +18,7 @@ data:
   format: csv
   table_name: hits
   ingestion_parallelism_factor: 1.0
-  storage_key: "YOUR_STORAGE_KEY_HERE"
+  storage_key: ""  # Set your Azure Storage account key here
   files:
     - url: "https://amitofstorage.blob.core.windows.net/clickbench/part_0001.csv.gz"
     - url: "https://amitofstorage.blob.core.windows.net/clickbench/part_0002.csv.gz"
@@ -128,5 +128,6 @@ data:
 schema_file: schema.kql
 
 # -- Queries ------------------------------------------------------------------
-# Relative path to the directory containing one .kql file per benchmark query.
+# Relative path to the directory containing one .query file per benchmark query.
+# Each .query file contains both KQL and SQL sections.
 queries_dir: queries

@@ -1,0 +1,5 @@
+{
+  "description": "Top 25 counters (>100k hits) by avg URL length",
+  "kql": "hits\n| where URL != \"\"\n| summarize l = avg(strlen(URL)), c = count() by CounterID\n| where c > 100000\n| top 25 by l desc",
+  "sql": "SELECT CounterID, AVG(length(URL)) AS l, COUNT(*) AS c FROM hits WHERE URL <> '' GROUP BY CounterID HAVING COUNT(*) > 100000 ORDER BY l DESC LIMIT 25"
+}

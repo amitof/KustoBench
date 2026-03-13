@@ -1,5 +1,0 @@
-// Q12: Top 10 non-empty search phrases by count.
-hits
-| where SearchPhrase != ""
-| summarize c = count() by SearchPhrase
-| top 10 by c desc

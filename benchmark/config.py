@@ -1,6 +1,7 @@
 """Configuration loading for KustoBench."""
 
 import glob
+import json
 import os
 import yaml
 
@@ -127,17 +128,12 @@ def load_dataset(name: str) -> dict:
     queries_path = os.path.join(dataset_dir, queries_dir)
     queries = []
     if os.path.isdir(queries_path):
-        for kql_file in sorted(glob.glob(os.path.join(queries_path, "*.kql"))):
-            query_name = os.path.splitext(os.path.basename(kql_file))[0]
-            with open(kql_file, "r", encoding="utf-8") as fh:
-                query_text = fh.read().strip()
-            # Strip leading comment lines to get the pure KQL
-            lines = query_text.splitlines()
-            kql_lines = [ln for ln in lines if not ln.lstrip().startswith("//")]
-            queries.append({
-                "name": query_name,
-                "query": "\n".join(kql_lines).strip(),
-            })
+        for query_file in sorted(glob.glob(os.path.join(queries_path, "*.query"))):
+            query_name = os.path.splitext(os.path.basename(query_file))[0]
+            with open(query_file, "r", encoding="utf-8") as fh:
+                parsed = json.load(fh)
+            parsed["name"] = query_name
+            queries.append(parsed)
 
     return {
         "name": manifest.get("name", name),
@@ -153,6 +149,8 @@ def apply_dataset(config: dict, dataset_name: str) -> dict:
 
     Loads the dataset and sets ``config["queries"]`` from the dataset's
     query files.  The dataset metadata is stored under ``config["dataset"]``.
+    Selects the appropriate query dialect (kql or sql) based on
+    ``config["env_type"]``.
 
     Args:
         config: The benchmark configuration dictionary (modified in place).
@@ -168,5 +166,12 @@ def apply_dataset(config: dict, dataset_name: str) -> dict:
         "data": ds["data"],
         "schema": ds["schema"],
     }
-    config["queries"] = ds["queries"]
+
+    env_type = config.get("env_type", "adx")
+    dialect = "sql" if env_type == "clickhouse" else "kql"
+    resolved = []
+    for q in ds["queries"]:
+        query_text = q.get(dialect, "") or q.get("kql", "")
+        resolved.append({"name": q["name"], "query": query_text})
+    config["queries"] = resolved
     return config

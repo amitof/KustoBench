@@ -1,0 +1,5 @@
+{
+  "description": "Distinct count of SearchPhrase",
+  "kql": "hits\n| summarize dcount(SearchPhrase)",
+  "sql": "SELECT COUNT(DISTINCT SearchPhrase) FROM hits"
+}

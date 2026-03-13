@@ -1,5 +1,0 @@
-// Q22: Top 10 search phrases where Title contains "Google", excluding .google. URLs.
-hits
-| where Title contains "Google" and not(URL contains ".google.") and SearchPhrase != ""
-| summarize min(URL), min(Title), c = count(), dcount(UserID) by SearchPhrase
-| top 10 by c desc

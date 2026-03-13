@@ -1,0 +1,5 @@
+{
+  "description": "First 10 rows from google URLs ordered by time",
+  "kql": "hits\n| where URL contains \"google\"\n| order by EventTime asc\n| take 10",
+  "sql": "SELECT * FROM hits WHERE URL LIKE '%google%' ORDER BY EventTime LIMIT 10"
+}

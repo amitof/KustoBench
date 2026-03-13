@@ -1,4 +1,0 @@
-// Q15: Top 10 users by hit count.
-hits
-| summarize c = count() by UserID
-| top 10 by c desc
