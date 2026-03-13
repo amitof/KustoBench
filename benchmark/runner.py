@@ -113,12 +113,16 @@ def run_benchmark(client, config: dict) -> BenchmarkResult:
         # Print per-query summary
         display = query_text[:120].replace('\n', ' ')
         if query_result.successful_iterations:
+            if iterations == 1:
+                timing = f"duration={query_result.min_seconds:.3f}s"
+            else:
+                timing = (
+                    f"min={query_result.min_seconds:.3f}s  "
+                    f"max={query_result.max_seconds:.3f}s  "
+                    f"avg={query_result.mean_seconds:.3f}s"
+                )
             print(
-                f"[{qi}/{len(queries)}] {name}: "
-                f"min={query_result.min_seconds:.3f}s  "
-                f"max={query_result.max_seconds:.3f}s  "
-                f"avg={query_result.mean_seconds:.3f}s  "
-                f"| {display}",
+                f"[{qi}/{len(queries)}] {name}: {timing}  | {display}",
                 file=sys.stderr,
             )
         else:
