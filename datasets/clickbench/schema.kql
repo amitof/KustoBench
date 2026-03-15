@@ -13,7 +13,7 @@
     CounterID: long,
     ClientIP: long,
     RegionID: long,
-    UserID: string,
+    UserID: long,
     CounterClass: long,
     OS: long,
     UserAgent: long,
@@ -111,32 +111,32 @@
     CLID: long
 )
 
-// Disable inverted term indexing on all string columns
-.alter column hits.Title policy encoding type='identifier'
-.alter column hits.URL policy encoding type='identifier'
-.alter column hits.Referer policy encoding type='identifier'
-.alter column hits.FlashMinor2 policy encoding type='identifier'
-.alter column hits.UserAgentMinor policy encoding type='identifier'
-.alter column hits.MobilePhoneModel policy encoding type='identifier'
-.alter column hits.Params policy encoding type='identifier'
-.alter column hits.SearchPhrase policy encoding type='identifier'
-.alter column hits.PageCharset policy encoding type='identifier'
-.alter column hits.OriginalURL policy encoding type='identifier'
-.alter column hits.HitColor policy encoding type='identifier'
-.alter column hits.BrowserLanguage policy encoding type='identifier'
-.alter column hits.BrowserCountry policy encoding type='identifier'
-.alter column hits.SocialNetwork policy encoding type='identifier'
-.alter column hits.SocialAction policy encoding type='identifier'
-.alter column hits.SocialSourcePage policy encoding type='identifier'
-.alter column hits.ParamOrderID policy encoding type='identifier'
-.alter column hits.ParamCurrency policy encoding type='identifier'
-.alter column hits.OpenstatServiceName policy encoding type='identifier'
-.alter column hits.OpenstatCampaignID policy encoding type='identifier'
-.alter column hits.OpenstatAdID policy encoding type='identifier'
-.alter column hits.OpenstatSourceID policy encoding type='identifier'
-.alter column hits.UTMSource policy encoding type='identifier'
-.alter column hits.UTMMedium policy encoding type='identifier'
-.alter column hits.UTMCampaign policy encoding type='identifier'
-.alter column hits.UTMContent policy encoding type='identifier'
-.alter column hits.UTMTerm policy encoding type='identifier'
-.alter column hits.FromTag policy encoding type='identifier'
+// Disable field tokenizer on string columns
+.alter-merge column hits.Title policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.URL policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.Referer policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.FlashMinor2 policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.UserAgentMinor policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.MobilePhoneModel policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.Params policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.SearchPhrase policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.PageCharset policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.OriginalURL policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.HitColor policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.BrowserLanguage policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.BrowserCountry policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.SocialNetwork policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.SocialAction policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.SocialSourcePage policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.ParamOrderID policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.ParamCurrency policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.OpenstatServiceName policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.OpenstatCampaignID policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.OpenstatAdID policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.OpenstatSourceID policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.UTMSource policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.UTMMedium policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.UTMCampaign policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.UTMContent policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.UTMTerm policy encoding ```{"ShardFieldTokenizer": "empty"}```
+.alter-merge column hits.FromTag policy encoding ```{"ShardFieldTokenizer": "empty"}```

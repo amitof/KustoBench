@@ -1,5 +1,5 @@
 {
   "description": "Top 10 URLs by count (with constant column)",
   "sql": "SELECT 1, URL, COUNT(*) AS c FROM hits GROUP BY 1, URL ORDER BY c DESC LIMIT 10",
-  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| summarize hint.strategy=shuffle c = count() by URL\n| top 10 by c desc"
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| summarize hint.strategy=shuffle c = count() by Column1 = 1, URL\n| top 10 by c desc"
 }

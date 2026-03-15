@@ -1,5 +1,5 @@
 {
   "description": "Top 10 SearchEngineID + ClientIP by count (non-empty phrase)",
   "sql": "SELECT SearchEngineID, ClientIP, COUNT(*) AS c, SUM(IsRefresh), AVG(ResolutionWidth) FROM hits WHERE SearchPhrase <> '' GROUP BY SearchEngineID, ClientIP ORDER BY c DESC LIMIT 10",
-  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where SearchPhrase != \"\"\n| summarize c = count(), sum(IsRefresh), avg(ResolutionWidth) by SearchEngineID, ClientIP\n| top 10 by c desc"
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where SearchPhrase != \"\"\n| summarize hint.strategy=shuffle c = count(), sum(IsRefresh), avg(ResolutionWidth) by SearchEngineID, ClientIP\n| top 10 by c desc"
 }

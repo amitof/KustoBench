@@ -2,10 +2,11 @@
 
 ## Key Takeaways
 
-- **Overall**: ClickHouse is **2.2x faster** end-to-end (57.9s vs 126.2s total query time) on identical hardware (2x E8s_v5, 8 cores / 64 GB each).
-- **ADX wins on simple scans and narrow filters** (q00–q11, q19, q36–q42): full-table aggregations, point lookups, and time-range filtered queries run 20–50% faster on ADX.
-- **ClickHouse dominates high-cardinality GROUP BY** (q12–q18, q20–q35): queries grouping by millions of distinct strings (SearchPhrase, URL) are 2–10x faster on ClickHouse, driven by its custom hash table implementation with arena-allocated strings and two-level aggregation.
-- **Ingestion**: ClickHouse loads 35% faster (4m19s vs 6m38s) and uses 11% less disk (13.71 GB vs 15.41 GB). ADX's larger on-disk footprint is largely due to its 3.6 GB index overhead. ADX achieves a higher compression ratio on raw data (6.0 vs 4.09).
+- **Overall**: ClickHouse is **1.9x faster** end-to-end (57.9s vs 108.7s total query time) on identical hardware (2x Standard E8s v5, 8 cores / 64 GB each).
+- **ADX wins 19 of 43 queries**: simple scans, narrow filters, full-table aggregations, point lookups, and time-range filtered queries.
+- **ClickHouse wins 21 of 43 queries**: high-cardinality GROUP BY, substring filters, wide aggregations, and unfiltered joins.
+- **3 ties**: within 10%, effectively equivalent.
+- **Ingestion**: ClickHouse loads 26% faster (4m19s vs 5m51s). ADX uses 7% less disk (12.79 GB vs 13.71 GB).
 
 ## Environment
 
@@ -29,75 +30,84 @@
 - **Table**: hits (105 columns, web-analytics page-view data)
 - **Rows**: 96,082,836
 - **Source files**: 102 gzipped CSV parts
+- **Uncompressed size**: 93.74 GB
 
 ## Load Performance
 
 | Metric | ClickHouse OSS | ADX |
 |---|---|---|
-| **Load time** | 4m19s | 6m38s |
-| **Data size on disk** | 13.71 GB | 15.41 GB |
-| **Index size** | | 3.6 GB |
-| **Compression ratio** | 4.09 | 6.0 |
+| **Load time** | 4m19s | 5m51s |
+| **Data size on disk** | 13.71 GB | 12.79 GB |
+| **Index size** | 4.5 MB | 190 MB |
+| **Compression ratio** | 6.84 | 7.33 |
 
 ## Query Duration (seconds)
 
+🟢 = ADX more than 10% faster. ⚪ = Tie (within 10%). 🔴 = ADX more than 25% slower than ClickHouse.
+
 | Query | Description | ClickHouse OSS | ADX | Diff % | Comments |
 |---|---|---|---|---|---|
-| q00 | COUNT, no filter | 0.193 | 0.098 | +49% | |
-| q01 | COUNT with point filter | 0.292 | 0.146 | +50% | |
-| q02 | Multiple aggregations (SUM/COUNT/AVG) | 0.233 | 0.182 | +22% | |
-| q03 | AVG on high-cardinality column | 0.262 | 0.165 | +37% | |
-| q04 | COUNT DISTINCT on high-cardinality column | 0.817 | 0.467 | +43% | |
-| q05 | COUNT DISTINCT on high-cardinality string | 1.086 | 0.729 | +33% | |
-| q06 | MIN/MAX on date column | 0.203 | 0.096 | +53% | |
-| q07 | Low-cardinality GROUP BY with point filter, ORDER BY | 0.215 | 0.134 | +38% | |
-| q08 | High-cardinality GROUP BY, DISTINCT count, Top-N | 0.997 | 0.713 | +28% | |
-| q09 | High-cardinality GROUP BY, multiple aggregations, Top-N | 1.064 | 0.921 | +13% | |
-| q10 | Medium-cardinality string GROUP BY, DISTINCT, Top-N | 0.390 | 0.272 | +30% | |
-| q11 | Two-key GROUP BY (int + string), DISTINCT, Top-N | 0.529 | 0.264 | +50% | |
-| q12 | High-cardinality string GROUP BY, Top-N | 1.009 | 1.683 | -67% | 🔴 |
-| q13 | High-cardinality string GROUP BY, DISTINCT count, Top-N | 1.557 | 7.734 | -397% | 🔴 |
-| q14 | Two-key GROUP BY (int + high-cardinality string), Top-N | 1.081 | 1.888 | -75% | 🔴 |
-| q15 | High-cardinality GROUP BY, Top-N | 0.893 | 2.889 | -224% | 🔴 |
-| q16 | Two high-cardinality key GROUP BY, Top-N | 2.637 | 5.986 | -127% | 🔴 |
-| q17 | Two high-cardinality key GROUP BY, unordered LIMIT | 1.581 | 5.994 | -279% | 🔴 |
-| q18 | Three-key GROUP BY (high-cardinality + expression), Top-N | 4.618 | 8.064 | -75% | 🔴 |
-| q19 | Point lookup on high-cardinality column | 0.197 | 0.115 | +42% | |
-| q20 | Substring filter (LIKE), COUNT | 0.652 | 4.423 | -579% | 🔴 |
-| q21 | Substring filter, high-cardinality GROUP BY, Top-N | 0.328 | 2.935 | -795% | 🔴 |
-| q22 | Two substring filters, GROUP BY, multiple aggregations, Top-N | 0.900 | 2.359 | -162% | 🔴 |
-| q23 | Substring filter, full row SELECT *, ORDER BY, LIMIT | 0.810 | 4.752 | -487% | 🔴 |
-| q24 | Range filter on string, ORDER BY time, LIMIT | 0.499 | 1.437 | -188% | 🔴 |
-| q25 | Range filter on string, ORDER BY string, LIMIT | 0.434 | 0.682 | -57% | 🔴 |
-| q26_single_sort | Range filter on string, ORDER BY time, LIMIT | 0.538 | 1.450 | -170% | 🔴 |
-| q27 | Medium-cardinality GROUP BY, HAVING, Top-N | 0.352 | 4.543 | -1191% | 🔴 |
-| q28 | Regex extraction, GROUP BY, HAVING, Top-N | 15.837 | 18.295 | -16% | |
-| q29 | Wide aggregation (90 SUM expressions) | 0.364 | 2.355 | -547% | 🔴 |
-| q30 | Two-key GROUP BY with range filter, Top-N | 0.710 | 2.222 | -213% | 🔴 |
-| q31 | Two high-cardinality key GROUP BY with range filter, Top-N | 1.263 | 4.454 | -253% | 🔴 |
-| q32 | Two high-cardinality key GROUP BY (no filter), Top-N | 4.697 | 12.835 | -173% | 🔴 |
-| q33 | High-cardinality string GROUP BY (URL), Top-N | 4.193 | 9.076 | -116% | 🔴 |
-| q34 | High-cardinality string GROUP BY (URL + constant), Top-N | 4.209 | 9.048 | -115% | 🔴 |
-| q35 | GROUP BY with computed columns, Top-N | 0.626 | 5.475 | -775% | 🔴 |
-| q36 | Time-range + point filter, high-cardinality GROUP BY, Top-N | 0.259 | 0.204 | +21% | |
-| q37 | Time-range + point filter, high-cardinality string GROUP BY, Top-N | 0.231 | 0.184 | +20% | |
-| q38 | Time-range + multi-predicate filter, GROUP BY, OFFSET pagination | 0.233 | 0.157 | +33% | |
-| q39 | Time-range filter, CASE expression, five-key GROUP BY, OFFSET | 0.321 | 0.395 | -23% | |
-| q40 | Time-range + IN filter, two-key GROUP BY, OFFSET | 0.211 | 0.122 | +42% | |
-| q41 | Time-range + point filter (hash), two-key GROUP BY, OFFSET | 0.213 | 0.114 | +46% | |
-| q42 | Time-range filter, time-bucketed GROUP BY, OFFSET | 0.203 | 0.118 | +42% | |
+| q00 | COUNT, no filter | 0.193 | 0.091 | +53% | 🟢 |
+| q01 | COUNT with point filter | 0.292 | 0.122 | +58% | 🟢 |
+| q02 | Multiple aggregations (SUM/COUNT/AVG) | 0.233 | 0.185 | +21% | 🟢 |
+| q03 | AVG on high-cardinality column | 0.262 | 0.157 | +40% | 🟢 |
+| q04 | COUNT DISTINCT on high-cardinality column | 0.817 | 0.303 | +63% | 🟢 |
+| q05 | COUNT DISTINCT on high-cardinality string | 1.086 | 0.374 | +66% | 🟢 |
+| q06 | MIN/MAX on date column | 0.203 | 0.092 | +55% | 🟢 |
+| q07 | Low-cardinality GROUP BY with point filter, ORDER BY | 0.215 | 0.126 | +41% | 🟢 |
+| q08 | High-cardinality GROUP BY, DISTINCT count, Top-N | 0.997 | 0.761 | +24% | 🟢 |
+| q09 | High-cardinality GROUP BY, multiple aggregations, Top-N | 1.064 | 1.021 | +4% | ⚪ |
+| q10 | Medium-cardinality string GROUP BY, DISTINCT, Top-N | 0.390 | 0.268 | +31% | 🟢 |
+| q11 | Two-key GROUP BY (int + string), DISTINCT, Top-N | 0.529 | 0.242 | +54% | 🟢 |
+| q12 | High-cardinality string GROUP BY, Top-N | 1.009 | 1.874 | -86% | 🔴 |
+| q13 | High-cardinality string GROUP BY, DISTINCT count, Top-N | 1.557 | 7.779 | -400% | 🔴 |
+| q14 | Two-key GROUP BY (int + high-cardinality string), Top-N | 1.081 | 1.981 | -83% | 🔴 |
+| q15 | High-cardinality GROUP BY, Top-N | 0.893 | 3.045 | -241% | 🔴 |
+| q16 | Two high-cardinality key GROUP BY, Top-N | 2.637 | 6.089 | -131% | 🔴 |
+| q17 | Two high-cardinality key GROUP BY, unordered LIMIT | 1.581 | 5.371 | -240% | 🔴 |
+| q18 | Three-key GROUP BY (high-cardinality + expression), Top-N | 4.618 | 8.328 | -80% | 🔴 |
+| q19 | Point lookup on high-cardinality column | 0.197 | 0.113 | +43% | 🟢 |
+| q20 | Substring filter (LIKE), COUNT | 0.652 | 1.066 | -64% | 🔴 |
+| q21 | Substring filter, high-cardinality GROUP BY, Top-N | 0.328 | 1.089 | -232% | 🔴 |
+| q22 | Two substring filters, GROUP BY, multiple aggregations, Top-N | 0.900 | 1.002 | -11% | 🔴 |
+| q23 | Substring filter, full row SELECT *, ORDER BY, LIMIT | 0.810 | 2.637 | -226% | 🔴 |
+| q24 | Non-empty string filter, ORDER BY time, LIMIT | 0.499 | 0.992 | -99% | 🔴 |
+| q25 | Non-empty string filter, ORDER BY string, LIMIT | 0.434 | 0.345 | +21% | 🟢 |
+| q26 | Non-empty string filter, ORDER BY time, LIMIT | 0.538 | 0.990 | -84% | 🔴 |
+| q27 | Medium-cardinality GROUP BY, HAVING, Top-N | 0.352 | 2.882 | -719% | 🔴 |
+| q28 | Regex extraction, GROUP BY, HAVING, Top-N | 15.837 | 16.859 | -6% | ⚪ |
+| q29 | Wide aggregation (90 SUM expressions) | 0.364 | 1.722 | -373% | 🔴 |
+| q30 | Two-key GROUP BY with range filter, Top-N | 0.710 | 1.502 | -112% | 🔴 |
+| q31 | Two high-cardinality key GROUP BY with range filter, Top-N | 1.263 | 1.888 | -49% | 🔴 |
+| q32 | Two high-cardinality key GROUP BY (no filter), Top-N | 4.697 | 13.462 | -187% | 🔴 |
+| q33 | High-cardinality string GROUP BY (URL), Top-N | 4.193 | 8.457 | -102% | 🔴 |
+| q34 | High-cardinality string GROUP BY (URL + constant), Top-N | 4.209 | 8.621 | -105% | 🔴 |
+| q35 | GROUP BY with computed columns, Top-N | 0.626 | 5.732 | -816% | 🔴 |
+| q36 | Time-range + point filter, high-cardinality GROUP BY, Top-N | 0.259 | 0.155 | +40% | 🟢 |
+| q37 | Time-range + point filter, high-cardinality string GROUP BY, Top-N | 0.231 | 0.150 | +35% | 🟢 |
+| q38 | Time-range + multi-predicate filter, GROUP BY, OFFSET pagination | 0.233 | 0.128 | +45% | 🟢 |
+| q39 | Time-range filter, CASE expression, five-key GROUP BY, OFFSET | 0.321 | 0.319 | +1% | ⚪ |
+| q40 | Time-range + IN filter, two-key GROUP BY, OFFSET | 0.211 | 0.111 | +47% | 🟢 |
+| q41 | Time-range + point filter (hash), two-key GROUP BY, OFFSET | 0.213 | 0.110 | +48% | 🟢 |
+| q42 | Time-range filter, time-bucketed GROUP BY, OFFSET | 0.203 | 0.112 | +45% | 🟢 |
 
 ## Summary
 
 | Metric | ClickHouse OSS | ADX |
 |---|---|---|
-| **Total query time** | 57.9s | 126.2s |
-| **Load time** | 4m19s | 6m38s |
-| **Data size** | 13.71 GB | 15.41 GB |
+| **Total query time** | 57.9s | 108.7s |
+| **Load time** | 4m19s | 5m51s |
+| **Data size on disk** | 13.71 GB | 12.79 GB |
+
+## Action Items
+
+1. ~~Fix `dcount` performance bugs~~ (fixed but not yet deployed as of 2026-03-15) - should improve q04, q05, q08-q11, q13.
+2. Consider adding common subexpression optimization - should significantly improve q29 and q35.
+3. Consider implementing two-level hashing - would narrow the gap on high-cardinality GROUP BY queries (q12-q18, q32-q34).
 
 ## Appendix: Query Definitions (ADX time : ClickHouse time)
 
-### q00 (0.098s : 0.193s)
+### q00 (0.091s : 0.193s) 🟢
 
 **SQL:**
 ```sql
@@ -110,7 +120,7 @@ hits
 | count
 ```
 
-### q01 (0.146s : 0.292s)
+### q01 (0.122s : 0.292s) 🟢
 
 **SQL:**
 ```sql
@@ -124,7 +134,7 @@ hits
 | count
 ```
 
-### q02 (0.182s : 0.233s)
+### q02 (0.185s : 0.233s) 🟢
 
 **SQL:**
 ```sql
@@ -137,7 +147,7 @@ hits
 | summarize sum(AdvEngineID), count(), avg(ResolutionWidth)
 ```
 
-### q03 (0.165s : 0.262s)
+### q03 (0.157s : 0.262s) 🟢
 
 **SQL:**
 ```sql
@@ -150,7 +160,7 @@ hits
 | summarize avg(UserID)
 ```
 
-### q04 (0.467s : 0.817s)
+### q04 (0.303s : 0.817s) 🟢
 
 **SQL:**
 ```sql
@@ -163,7 +173,7 @@ hits
 | summarize dcount(UserID)
 ```
 
-### q05 (0.729s : 1.086s)
+### q05 (0.374s : 1.086s) 🟢
 
 **SQL:**
 ```sql
@@ -176,7 +186,7 @@ hits
 | summarize dcount(SearchPhrase)
 ```
 
-### q06 (0.096s : 0.203s)
+### q06 (0.092s : 0.203s) 🟢
 
 **SQL:**
 ```sql
@@ -189,7 +199,7 @@ hits
 | summarize min(EventDate), max(EventDate)
 ```
 
-### q07 (0.134s : 0.215s)
+### q07 (0.126s : 0.215s) 🟢
 
 **SQL:**
 ```sql
@@ -204,7 +214,7 @@ hits
 | order by cnt desc
 ```
 
-### q08 (0.713s : 0.997s)
+### q08 (0.761s : 0.997s) 🟢
 
 **SQL:**
 ```sql
@@ -218,7 +228,7 @@ hits
 | top 10 by u desc
 ```
 
-### q09 (0.921s : 1.064s)
+### q09 (1.021s : 1.064s) ⚪
 
 **SQL:**
 ```sql
@@ -232,7 +242,7 @@ hits
 | top 10 by c desc
 ```
 
-### q10 (0.272s : 0.390s)
+### q10 (0.268s : 0.390s) 🟢
 
 **SQL:**
 ```sql
@@ -247,7 +257,7 @@ hits
 | top 10 by u desc
 ```
 
-### q11 (0.264s : 0.529s)
+### q11 (0.242s : 0.529s) 🟢
 
 **SQL:**
 ```sql
@@ -262,7 +272,7 @@ hits
 | top 10 by u desc
 ```
 
-### q12 (1.683s : 1.009s) 🔴
+### q12 (1.874s : 1.009s) 🔴
 
 **SQL:**
 ```sql
@@ -277,7 +287,7 @@ hits
 | top 10 by c desc
 ```
 
-### q13 (7.734s : 1.557s) 🔴
+### q13 (7.779s : 1.557s) 🔴
 
 **SQL:**
 ```sql
@@ -292,7 +302,7 @@ hits
 | top 10 by u desc
 ```
 
-### q14 (1.888s : 1.081s) 🔴
+### q14 (1.981s : 1.081s) 🔴
 
 **SQL:**
 ```sql
@@ -307,7 +317,7 @@ hits
 | top 10 by c desc
 ```
 
-### q15 (2.889s : 0.893s) 🔴
+### q15 (3.045s : 0.893s) 🔴
 
 **SQL:**
 ```sql
@@ -321,7 +331,7 @@ hits
 | top 10 by c desc
 ```
 
-### q16 (5.986s : 2.637s) 🔴
+### q16 (6.089s : 2.637s) 🔴
 
 **SQL:**
 ```sql
@@ -335,7 +345,7 @@ hits
 | top 10 by c desc
 ```
 
-### q17 (5.994s : 1.581s) 🔴
+### q17 (5.371s : 1.581s) 🔴
 
 **SQL:**
 ```sql
@@ -349,7 +359,7 @@ hits
 | take 10
 ```
 
-### q18 (8.064s : 4.618s) 🔴
+### q18 (8.328s : 4.618s) 🔴
 
 **SQL:**
 ```sql
@@ -363,7 +373,7 @@ hits
 | top 10 by c desc
 ```
 
-### q19 (0.115s : 0.197s)
+### q19 (0.113s : 0.197s) 🟢
 
 **SQL:**
 ```sql
@@ -376,7 +386,7 @@ hits
 | where UserID == 435090932899640449
 ```
 
-### q20 (4.423s : 0.652s) 🔴
+### q20 (1.066s : 0.652s) 🔴
 
 **SQL:**
 ```sql
@@ -390,7 +400,7 @@ hits
 | count
 ```
 
-### q21 (2.935s : 0.328s) 🔴
+### q21 (1.089s : 0.328s) 🔴
 
 **SQL:**
 ```sql
@@ -405,7 +415,7 @@ hits
 | top 10 by c desc
 ```
 
-### q22 (2.359s : 0.900s) 🔴
+### q22 (1.002s : 0.900s) 🔴
 
 **SQL:**
 ```sql
@@ -420,7 +430,7 @@ hits
 | top 10 by c desc
 ```
 
-### q23 (4.752s : 0.810s) 🔴
+### q23 (2.637s : 0.810s) 🔴
 
 **SQL:**
 ```sql
@@ -435,7 +445,7 @@ hits
 | take 10
 ```
 
-### q24 (1.437s : 0.499s) 🔴
+### q24 (0.992s : 0.499s) 🔴
 
 **SQL:**
 ```sql
@@ -450,7 +460,7 @@ hits
 | take 10
 ```
 
-### q25 (0.682s : 0.434s) 🔴
+### q25 (0.345s : 0.434s) 🟢
 
 **SQL:**
 ```sql
@@ -465,27 +475,22 @@ hits
 | take 10
 ```
 
-### q26 (1.450s : 0.538s) 🔴
+### q26 (0.990s : 0.538s) 🔴
 
 **SQL:**
 ```sql
-SELECT SearchPhrase FROM hits WHERE SearchPhrase <> '' ORDER BY EventTime, SearchPhrase LIMIT 10
+SELECT SearchPhrase FROM hits WHERE SearchPhrase <> '' ORDER BY EventTime LIMIT 10
 ```
 
 **KQL:**
 ```kql
 hits
 | where SearchPhrase != ""
-| order by EventTime asc, SearchPhrase asc
+| order by EventTime asc
 | take 10
 ```
 
-**Variant (single_sort):**
-```sql
-SELECT SearchPhrase FROM hits WHERE SearchPhrase <> '' ORDER BY EventTime LIMIT 10
-```
-
-### q27 (4.543s : 0.352s) 🔴
+### q27 (2.882s : 0.352s) 🔴
 
 **SQL:**
 ```sql
@@ -501,7 +506,7 @@ hits
 | top 25 by l desc
 ```
 
-### q28 (18.295s : 15.837s)
+### q28 (16.859s : 15.837s) ⚪
 
 **SQL:**
 ```sql
@@ -518,7 +523,7 @@ hits
 | top 25 by l desc
 ```
 
-### q29 (2.355s : 0.364s) 🔴
+### q29 (1.722s : 0.364s) 🔴
 
 **SQL:**
 ```sql
@@ -531,7 +536,7 @@ hits
 | summarize sum(ResolutionWidth), sum(ResolutionWidth + 1), ..., sum(ResolutionWidth + 89)
 ```
 
-### q30 (2.222s : 0.710s) 🔴
+### q30 (1.502s : 0.710s) 🔴
 
 **SQL:**
 ```sql
@@ -542,11 +547,11 @@ SELECT SearchEngineID, ClientIP, COUNT(*) AS c, SUM(IsRefresh), AVG(ResolutionWi
 ```kql
 hits
 | where SearchPhrase != ""
-| summarize c = count(), sum(IsRefresh), avg(ResolutionWidth) by SearchEngineID, ClientIP
+| summarize hint.strategy=shuffle c = count(), sum(IsRefresh), avg(ResolutionWidth) by SearchEngineID, ClientIP
 | top 10 by c desc
 ```
 
-### q31 (4.454s : 1.263s) 🔴
+### q31 (1.888s : 1.263s) 🔴
 
 **SQL:**
 ```sql
@@ -557,11 +562,11 @@ SELECT WatchID, ClientIP, COUNT(*) AS c, SUM(IsRefresh), AVG(ResolutionWidth) FR
 ```kql
 hits
 | where SearchPhrase != ""
-| summarize c = count(), sum(IsRefresh), avg(ResolutionWidth) by WatchID, ClientIP
+| summarize hint.strategy=shuffle c = count(), sum(IsRefresh), avg(ResolutionWidth) by WatchID, ClientIP
 | top 10 by c desc
 ```
 
-### q32 (12.835s : 4.697s) 🔴
+### q32 (13.462s : 4.697s) 🔴
 
 **SQL:**
 ```sql
@@ -575,7 +580,7 @@ hits
 | top 10 by c desc
 ```
 
-### q33 (9.076s : 4.193s) 🔴
+### q33 (8.457s : 4.193s) 🔴
 
 **SQL:**
 ```sql
@@ -589,7 +594,7 @@ hits
 | top 10 by c desc
 ```
 
-### q34 (9.048s : 4.209s) 🔴
+### q34 (8.621s : 4.209s) 🔴
 
 **SQL:**
 ```sql
@@ -599,11 +604,11 @@ SELECT 1, URL, COUNT(*) AS c FROM hits GROUP BY 1, URL ORDER BY c DESC LIMIT 10
 **KQL:**
 ```kql
 hits
-| summarize hint.strategy=shuffle c = count() by URL
+| summarize hint.strategy=shuffle c = count() by Column1 = 1, URL
 | top 10 by c desc
 ```
 
-### q35 (5.475s : 0.626s) 🔴
+### q35 (5.732s : 0.626s) 🔴
 
 **SQL:**
 ```sql
@@ -618,7 +623,7 @@ hits
 | top 10 by c desc
 ```
 
-### q36 (0.204s : 0.259s)
+### q36 (0.155s : 0.259s) 🟢
 
 **SQL:**
 ```sql
@@ -633,7 +638,7 @@ hits
 | top 10 by PageViews desc
 ```
 
-### q37 (0.184s : 0.231s)
+### q37 (0.150s : 0.231s) 🟢
 
 **SQL:**
 ```sql
@@ -648,7 +653,7 @@ hits
 | top 10 by PageViews desc
 ```
 
-### q38 (0.157s : 0.233s)
+### q38 (0.128s : 0.233s) 🟢
 
 **SQL:**
 ```sql
@@ -666,7 +671,7 @@ hits
 | project-away rn
 ```
 
-### q39 (0.395s : 0.321s)
+### q39 (0.319s : 0.321s) ⚪
 
 **SQL:**
 ```sql
@@ -685,7 +690,7 @@ hits
 | project-away rn
 ```
 
-### q40 (0.122s : 0.211s)
+### q40 (0.111s : 0.211s) 🟢
 
 **SQL:**
 ```sql
@@ -703,7 +708,7 @@ hits
 | project-away rn
 ```
 
-### q41 (0.114s : 0.213s)
+### q41 (0.110s : 0.213s) 🟢
 
 **SQL:**
 ```sql
@@ -721,7 +726,7 @@ hits
 | project-away rn
 ```
 
-### q42 (0.118s : 0.203s)
+### q42 (0.112s : 0.203s) 🟢
 
 **SQL:**
 ```sql
