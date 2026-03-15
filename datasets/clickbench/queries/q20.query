@@ -1,5 +1,5 @@
 {
   "description": "Count URLs containing google",
-  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where URL contains \"google\"\n| count",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where URL contains_cs \"google\"\n| count",
   "sql": "SELECT COUNT(*) FROM hits WHERE URL LIKE '%google%'"
 }

@@ -1,5 +1,5 @@
 {
   "description": "Top 10 search phrases on google URLs",
-  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where URL contains \"google\" and SearchPhrase != \"\"\n| summarize hint.strategy=shuffle min(URL), c = count() by SearchPhrase\n| top 10 by c desc",
+  "kql": "set maxmemoryconsumptionperiterator=17179869184;\nhits\n| where URL contains_cs \"google\" and SearchPhrase != \"\"\n| summarize hint.strategy=shuffle min(URL), c = count() by SearchPhrase\n| top 10 by c desc",
   "sql": "SELECT SearchPhrase, MIN(URL), COUNT(*) AS c FROM hits WHERE URL LIKE '%google%' AND SearchPhrase <> '' GROUP BY SearchPhrase ORDER BY c DESC LIMIT 10"
 }
