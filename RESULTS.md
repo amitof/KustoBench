@@ -2,10 +2,10 @@
 
 ## Key Takeaways
 
-- **Overall**: ClickHouse is **1.9x faster** end-to-end (57.9s vs 108.7s total query time) on identical hardware (2x Standard E8s v5, 8 cores / 64 GB each).
+- **Overall**: ClickHouse is **1.9x faster** end-to-end (57.9s vs 108.2s total query time) on identical hardware (2x Standard E8s v5, 8 cores / 64 GB each).
 - **ADX wins 19 of 43 queries**: simple scans, narrow filters, full-table aggregations, point lookups, and time-range filtered queries.
-- **ClickHouse wins 21 of 43 queries**: high-cardinality GROUP BY, substring filters, wide aggregations, and unfiltered joins.
-- **3 ties**: within 10%, effectively equivalent.
+- **ClickHouse wins 20 of 43 queries**: high-cardinality GROUP BY, substring filters, wide aggregations, and unfiltered joins.
+- **4 ties**: within 10%, effectively equivalent.
 - **Ingestion**: ClickHouse loads 26% faster (4m19s vs 5m51s). ADX uses 7% less disk (12.79 GB vs 13.71 GB).
 
 ## Environment
@@ -43,7 +43,7 @@
 
 ## Query Duration (seconds)
 
-🟢 = ADX more than 10% faster. ⚪ = Tie (within 10%). 🔴 = ADX more than 25% slower than ClickHouse.
+🟢 = ADX more than 10% faster. ⚪ = Tie (within 10%). 🔴 = ADX more than 10% slower than ClickHouse.
 
 | Query | Description | ClickHouse OSS | ADX | Diff % | Comments |
 |---|---|---|---|---|---|
@@ -67,13 +67,13 @@
 | q17 | Two high-cardinality key GROUP BY, unordered LIMIT | 1.581 | 5.371 | -240% | 🔴 |
 | q18 | Three-key GROUP BY (high-cardinality + expression), Top-N | 4.618 | 8.328 | -80% | 🔴 |
 | q19 | Point lookup on high-cardinality column | 0.197 | 0.113 | +43% | 🟢 |
-| q20 | Substring filter (LIKE), COUNT | 0.652 | 1.066 | -64% | 🔴 |
-| q21 | Substring filter, high-cardinality GROUP BY, Top-N | 0.328 | 1.089 | -232% | 🔴 |
-| q22 | Two substring filters, GROUP BY, multiple aggregations, Top-N | 0.900 | 1.002 | -11% | 🔴 |
-| q23 | Substring filter, full row SELECT *, ORDER BY, LIMIT | 0.810 | 2.637 | -226% | 🔴 |
+| q20 | Substring filter (LIKE), COUNT | 0.652 | 0.960 | -47% | 🔴 |
+| q21 | Substring filter, high-cardinality GROUP BY, Top-N | 0.328 | 0.970 | -196% | 🔴 |
+| q22 | Two substring filters, GROUP BY, multiple aggregations, Top-N | 0.900 | 0.896 | +0% | ⚪ |
+| q23 | Substring filter, full row SELECT *, ORDER BY, LIMIT | 0.810 | 2.446 | -202% | 🔴 |
 | q24 | Non-empty string filter, ORDER BY time, LIMIT | 0.499 | 0.992 | -99% | 🔴 |
 | q25 | Non-empty string filter, ORDER BY string, LIMIT | 0.434 | 0.345 | +21% | 🟢 |
-| q26 | Non-empty string filter, ORDER BY time, LIMIT | 0.538 | 0.990 | -84% | 🔴 |
+| q26 | Non-empty string filter, ORDER BY time + string, LIMIT | 0.538 | 0.990 | -84% | 🔴 |
 | q27 | Medium-cardinality GROUP BY, HAVING, Top-N | 0.352 | 2.882 | -719% | 🔴 |
 | q28 | Regex extraction, GROUP BY, HAVING, Top-N | 15.837 | 16.859 | -6% | ⚪ |
 | q29 | Wide aggregation (90 SUM expressions) | 0.364 | 1.722 | -373% | 🔴 |
@@ -95,7 +95,7 @@
 
 | Metric | ClickHouse OSS | ADX |
 |---|---|---|
-| **Total query time** | 57.9s | 108.7s |
+| **Total query time** | 57.9s | 108.2s |
 | **Load time** | 4m19s | 5m51s |
 | **Data size on disk** | 13.71 GB | 12.79 GB |
 
@@ -386,7 +386,7 @@ hits
 | where UserID == 435090932899640449
 ```
 
-### q20 (1.066s : 0.652s) 🔴
+### q20 (0.960s : 0.652s) 🔴
 
 **SQL:**
 ```sql
@@ -396,11 +396,11 @@ SELECT COUNT(*) FROM hits WHERE URL LIKE '%google%'
 **KQL:**
 ```kql
 hits
-| where URL contains "google"
+| where URL contains_cs "google"
 | count
 ```
 
-### q21 (1.089s : 0.328s) 🔴
+### q21 (0.970s : 0.328s) 🔴
 
 **SQL:**
 ```sql
@@ -410,12 +410,12 @@ SELECT SearchPhrase, MIN(URL), COUNT(*) AS c FROM hits WHERE URL LIKE '%google%'
 **KQL:**
 ```kql
 hits
-| where URL contains "google" and SearchPhrase != ""
+| where URL contains_cs "google" and SearchPhrase != ""
 | summarize hint.strategy=shuffle min(URL), c = count() by SearchPhrase
 | top 10 by c desc
 ```
 
-### q22 (1.002s : 0.900s) 🔴
+### q22 (0.896s : 0.900s) ⚪
 
 **SQL:**
 ```sql
@@ -425,12 +425,12 @@ SELECT SearchPhrase, MIN(URL), MIN(Title), COUNT(*) AS c, COUNT(DISTINCT UserID)
 **KQL:**
 ```kql
 hits
-| where Title contains "Google" and not(URL contains ".google.") and SearchPhrase != ""
+| where Title contains_cs "Google" and not(URL contains_cs ".google.") and SearchPhrase != ""
 | summarize hint.strategy=shuffle min(URL), min(Title), c = count(), dcount(UserID) by SearchPhrase
 | top 10 by c desc
 ```
 
-### q23 (2.637s : 0.810s) 🔴
+### q23 (2.446s : 0.810s) 🔴
 
 **SQL:**
 ```sql
@@ -440,7 +440,7 @@ SELECT * FROM hits WHERE URL LIKE '%google%' ORDER BY EventTime LIMIT 10
 **KQL:**
 ```kql
 hits
-| where URL contains "google"
+| where URL contains_cs "google"
 | order by EventTime asc
 | take 10
 ```
@@ -479,14 +479,14 @@ hits
 
 **SQL:**
 ```sql
-SELECT SearchPhrase FROM hits WHERE SearchPhrase <> '' ORDER BY EventTime LIMIT 10
+SELECT SearchPhrase FROM hits WHERE SearchPhrase <> '' ORDER BY EventTime, SearchPhrase LIMIT 10
 ```
 
 **KQL:**
 ```kql
 hits
 | where SearchPhrase != ""
-| order by EventTime asc
+| order by EventTime asc, SearchPhrase asc
 | take 10
 ```
 
